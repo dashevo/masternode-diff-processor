@@ -234,19 +234,24 @@ pub extern "C" fn mndiff_process(
                         let quorum_masternode_list = unsafe { (*lookup_result).decode() };
                         unsafe { masternode_list_destroy(lookup_result); }
                         let block_height: u32 = unsafe { block_height_lookup(boxed(quorum_masternode_list.block_hash.0), context) };
-                        let valid_masternodes = quorum_masternode_list.valid_masternodes_for(quorum_entry.llmq_quorum_hash(), llmq_type.quorum_size(), block_height);
+                        let quorum_modifier = quorum_entry.llmq_quorum_hash();
+                        let quorum_count = llmq_type.quorum_size();
+                        let valid_masternodes = quorum_masternode_list.valid_masternodes_for(quorum_modifier, quorum_count, block_height);
+                        println!("quorum_entry.valid_masternodes for quorum_modifier: {}, quorum_size: {}, height: {}, {}: {:?}", quorum_modifier, quorum_count, block_height, valid_masternodes.len(), valid_masternodes);
                         let operator_pks: Vec<*mut [u8; 48]> = (0..valid_masternodes.len())
                             .into_iter()
                             .filter(|&i| quorum_entry.signers_bitset.bit_is_true_at_le_index(i as u32))
                             .map(|i| boxed(valid_masternodes[i].operator_public_key_at(block_height).0))
                             .collect();
+                        let commitment_hash = quorum_entry.generate_commitment_hash();
+                        println!("quorum_entry.operator_pks filtered with signers_bitset: {:?}, commitment_hash: {}, {:?}", quorum_entry.signers_bitset, commitment_hash, operator_pks);
                         let operator_public_keys_count = operator_pks.len();
                         let is_valid_signature = unsafe {
                             validate_quorum_callback(
                                 boxed(QuorumValidationData {
                                     items: boxed_vec(operator_pks),
                                     count: operator_public_keys_count,
-                                    commitment_hash: boxed(quorum_entry.generate_commitment_hash().0),
+                                    commitment_hash: boxed(commitment_hash.0),
                                     all_commitment_aggregated_signature: boxed(quorum_entry.all_commitment_aggregated_signature.0),
                                     quorum_threshold_signature: boxed(quorum_entry.quorum_threshold_signature.0),
                                     quorum_public_key: boxed(quorum_entry.quorum_public_key.0)
@@ -254,8 +259,9 @@ pub extern "C" fn mndiff_process(
                                 context
                             )
                         };
-                        has_valid_quorums &= quorum_entry.validate_payload() && is_valid_signature;
-                        println!("quorum_entry.validate: {:?} signature: {}, all: {}", quorum_entry, is_valid_signature, has_valid_quorums);
+                        let is_valid_payload = quorum_entry.validate_payload();
+                        has_valid_quorums &= is_valid_payload && is_valid_signature;
+                        println!("quorum_entry.validate: {:?}, signature: {}, payload: {}, all: {}", quorum_entry, is_valid_signature, is_valid_payload, has_valid_quorums);
                         if has_valid_quorums {
                             quorum_entry.verified = true;
                         }

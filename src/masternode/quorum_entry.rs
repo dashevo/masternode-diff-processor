@@ -34,6 +34,9 @@ impl<'a> std::fmt::Debug for QuorumEntry<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MasternodeList")
             .field("quorum_entry_hash", &self.quorum_entry_hash)
+            .field("quorum_public_key", &self.quorum_public_key)
+            .field("quorum_threshold_signature", &self.quorum_threshold_signature)
+            .field("all_commitment_aggregated_signature", &self.all_commitment_aggregated_signature)
             .finish()
     }
 }
