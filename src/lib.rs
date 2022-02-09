@@ -255,6 +255,7 @@ pub extern "C" fn mndiff_process(
                             )
                         };
                         has_valid_quorums &= quorum_entry.validate_payload() && is_valid_signature;
+                        println!("quorum_entry.validate: {:?} signature: {}, all: {}", quorum_entry, is_valid_signature, has_valid_quorums);
                         if has_valid_quorums {
                             quorum_entry.verified = true;
                         }
