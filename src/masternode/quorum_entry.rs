@@ -37,6 +37,7 @@ impl<'a> std::fmt::Debug for QuorumEntry<'a> {
             .field("quorum_public_key", &self.quorum_public_key)
             .field("quorum_threshold_signature", &self.quorum_threshold_signature)
             .field("all_commitment_aggregated_signature", &self.all_commitment_aggregated_signature)
+            .field("signers_bitset", &self.signers_bitset)
             .finish()
     }
 }

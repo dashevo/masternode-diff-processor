@@ -237,15 +237,18 @@ pub extern "C" fn mndiff_process(
                         let quorum_modifier = quorum_entry.llmq_quorum_hash();
                         let quorum_count = llmq_type.quorum_size();
                         let valid_masternodes = quorum_masternode_list.valid_masternodes_for(quorum_modifier, quorum_count, block_height);
-                        println!("quorum_entry.valid_masternodes for quorum_modifier: {}, quorum_size: {}, height: {}, {}: {:?}", quorum_modifier, quorum_count, block_height, valid_masternodes.len(), valid_masternodes);
                         let operator_pks: Vec<*mut [u8; 48]> = (0..valid_masternodes.len())
                             .into_iter()
                             .filter(|&i| quorum_entry.signers_bitset.bit_is_true_at_le_index(i as u32))
-                            .map(|i| boxed(valid_masternodes[i].operator_public_key_at(block_height).0))
+                            .map(|i| {
+                                let opk = valid_masternodes[i].operator_public_key_at(block_height);
+                                println!("quorum_entry.operator_pk: {:?} {:?}", i, opk);
+                                boxed(opk.0)
+                            })
                             .collect();
                         let commitment_hash = quorum_entry.generate_commitment_hash();
-                        println!("quorum_entry.operator_pks filtered with signers_bitset: {:?}, commitment_hash: {}, {:?}", quorum_entry.signers_bitset, commitment_hash, operator_pks);
                         let operator_public_keys_count = operator_pks.len();
+                        println!("quorum_entry:: quorum_modifier: {}, quorum_size: {}, height: {}, commitment_hash: {}, opk's: {}, {}: {:?}", quorum_modifier, quorum_count, block_height, commitment_hash, operator_public_keys_count, valid_masternodes.len(), valid_masternodes);
                         let is_valid_signature = unsafe {
                             validate_quorum_callback(
                                 boxed(QuorumValidationData {
