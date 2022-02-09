@@ -2,6 +2,7 @@ use std::convert::Into;
 use byte::{BytesExt, LE};
 use byte::ctx::Bytes;
 use hashes::{Hash, sha256d};
+use hashes::hex::ToHex;
 use crate::common::llmq_type::LLMQType;
 use crate::consensus::{Decodable, Encodable, WriteExt};
 use crate::consensus::encode::VarInt;
@@ -37,7 +38,7 @@ impl<'a> std::fmt::Debug for QuorumEntry<'a> {
             .field("quorum_public_key", &self.quorum_public_key)
             .field("quorum_threshold_signature", &self.quorum_threshold_signature)
             .field("all_commitment_aggregated_signature", &self.all_commitment_aggregated_signature)
-            .field("signers_bitset", &self.signers_bitset)
+            .field("signers_bitset", &self.signers_bitset.to_hex())
             .finish()
     }
 }

@@ -242,7 +242,7 @@ pub extern "C" fn mndiff_process(
                             .filter(|&i| quorum_entry.signers_bitset.bit_is_true_at_le_index(i as u32))
                             .map(|i| {
                                 let opk = valid_masternodes[i].operator_public_key_at(block_height);
-                                println!("quorum_entry.operator_pk: {:?} {:?}", i, opk);
+                                println!("quorum_entry:: operator_pk: {:?} {:?}", i, opk);
                                 boxed(opk.0)
                             })
                             .collect();
@@ -264,7 +264,7 @@ pub extern "C" fn mndiff_process(
                         };
                         let is_valid_payload = quorum_entry.validate_payload();
                         has_valid_quorums &= is_valid_payload && is_valid_signature;
-                        println!("quorum_entry.validate: {:?}, signature: {}, payload: {}, all: {}", quorum_entry, is_valid_signature, is_valid_payload, has_valid_quorums);
+                        println!("quorum_entry:: validate: {:?}, signature: {}, payload: {}, all: {}", quorum_entry, is_valid_signature, is_valid_payload, has_valid_quorums);
                         if has_valid_quorums {
                             quorum_entry.verified = true;
                         }
