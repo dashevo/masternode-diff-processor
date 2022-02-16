@@ -144,6 +144,11 @@ impl<'a> MasternodeList<'a> {
                 acc
             });
         llmq_commitment_hashes.sort();
+        println!("quorumMerkleRoot hashes: [");
+        for llmq_commitment_hash in llmq_commitment_hashes.clone() {
+            println!("{}", llmq_commitment_hash);
+        }
+        println!("]");
         llmq_commitment_hashes
     }
 

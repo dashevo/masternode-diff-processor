@@ -91,6 +91,7 @@ pub struct MasternodeEntryHash {
 
 #[repr(C)] #[derive(Clone, Copy, Debug)]
 pub struct MndiffResult {
+    pub block_hash: *mut [u8; 32],
     pub has_found_coinbase: bool, //1 byte
     pub has_valid_coinbase: bool, //1 byte
     pub has_valid_mn_list_root: bool, //1 byte
@@ -127,6 +128,7 @@ pub type MasternodeListDestroy = unsafe extern "C" fn(*const MasternodeList);
 impl Default for MndiffResult {
     fn default() -> Self {
         MndiffResult {
+            block_hash: null_mut(),
             has_found_coinbase: false,
             has_valid_coinbase: false,
             has_valid_mn_list_root: false,

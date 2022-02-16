@@ -4,7 +4,7 @@ use crate::consensus::Encodable;
 
 #[warn(non_camel_case_types)]
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Hash, Ord)]
 pub enum LLMQType {
     Llmqtype50_60 = 1,  // every 24 blocks
     Llmqtype400_60 = 2, // 288 blocks
