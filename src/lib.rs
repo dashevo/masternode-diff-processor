@@ -237,7 +237,7 @@ pub extern "C" fn mndiff_process(
                         let valid_masternodes = quorum_masternode_list.valid_masternodes_for(quorum_entry.llmq_quorum_hash(), llmq_type.quorum_size(), block_height);
                         let operator_pks: Vec<*mut [u8; 48]> = (0..valid_masternodes.len())
                             .into_iter()
-                            .filter_map(|i| match quorum.signers_bitset.bit_is_true_at_le_index(i as u32) {
+                            .filter_map(|i| match quorum_entry.signers_bitset.bit_is_true_at_le_index(i as u32) {
                                 true => Some(boxed(valid_masternodes[i].operator_public_key_at(block_height).0)),
                                 false => None
                             })
