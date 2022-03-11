@@ -2,6 +2,7 @@ use std::convert::Into;
 use byte::{BytesExt, LE};
 use byte::ctx::Bytes;
 use hashes::{Hash, sha256d};
+use hashes::hex::ToHex;
 use crate::common::llmq_type::LLMQType;
 use crate::consensus::{Decodable, Encodable, WriteExt};
 use crate::consensus::encode::VarInt;
@@ -32,8 +33,8 @@ pub struct QuorumEntry<'a> {
 }
 impl<'a> std::fmt::Debug for QuorumEntry<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MasternodeList")
-            .field("quorum_entry_hash", &self.quorum_entry_hash)
+        f.debug_struct("LLMQEntry")
+            .field("entry_hash", &self.quorum_entry_hash)
             .finish()
     }
 }

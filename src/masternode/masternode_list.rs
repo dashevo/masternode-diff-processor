@@ -26,6 +26,7 @@ impl<'a> std::fmt::Debug for MasternodeList<'a> {
             .field("quorum_merkle_root", &self.quorum_merkle_root)
             .field("masternodes", &self.masternodes.len())
             .field("quorums", &self.quorums.len())
+            // .field("quorums", &self.quorums)
             .finish()
     }
 }
@@ -75,6 +76,11 @@ impl<'a> MasternodeList<'a> {
         }).collect();
         let mut scores: Vec<UInt256> = score_dictionary.clone().into_keys().collect();
         scores.sort_by(|&s1, &s2| s2.clone().reversed().cmp(&s1.clone().reversed()));
+        println!("validMasternodes.scores for {}: {}: {} [", quorum_modifier, quorum_count, block_height);
+        for score in scores.clone() {
+            println!("{:?}", score);
+        }
+        println!("]");
         let mut masternodes: Vec<MasternodeEntry> = Vec::new();
         let masternodes_in_list_count = self.masternodes.len();
         let count = min(masternodes_in_list_count, scores.len());
@@ -88,6 +94,11 @@ impl<'a> MasternodeList<'a> {
                 break;
             }
         }
+        println!("validMasternodes.nodes for {}: {}: {} [", quorum_modifier, quorum_count, block_height);
+        for masternode in masternodes.clone() {
+            println!("{:?}", masternode);
+        }
+        println!("]");
         masternodes
     }
 
@@ -144,11 +155,11 @@ impl<'a> MasternodeList<'a> {
                 acc
             });
         llmq_commitment_hashes.sort();
-        println!("quorumMerkleRoot hashes: [");
-        for llmq_commitment_hash in llmq_commitment_hashes.clone() {
-            println!("{}", llmq_commitment_hash);
-        }
-        println!("]");
+        // println!("quorumMerkleRoot hashes: [");
+        // for llmq_commitment_hash in llmq_commitment_hashes.clone() {
+        //     println!("{}", llmq_commitment_hash);
+        // }
+        // println!("]");
         llmq_commitment_hashes
     }
 

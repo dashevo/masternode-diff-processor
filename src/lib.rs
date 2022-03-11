@@ -265,9 +265,7 @@ pub extern "C" fn mndiff_process(
                             needed_masternode_lists.push(boxed(quorum_hash.0));
                         } else {
                             if use_insight_as_backup {
-                                println!("use_insight_as_backup.1: {:?}", quorum_hash);
                                 unsafe { add_insight_lookup(boxed(quorum_hash.0), context) };
-                                println!("use_insight_as_backup.2: {:?}", quorum_hash);
                                 if unsafe { block_height_lookup(boxed(quorum_hash.0), context) != u32::MAX } {
                                     needed_masternode_lists.push(boxed(quorum_hash.0));
                                 }
@@ -454,11 +452,12 @@ pub fn lookup_masternode_list<'a,
     //println!("lookup_masternode_list <-: {:?}", hex_with_data(block_hash.0.as_slice()));
     let lookup_result = masternode_list_lookup(block_hash);
     if !lookup_result.is_null() {
-        let list = unsafe { *lookup_result };
-        let list_decoded = unsafe { list.decode() };
-        println!("lookup_masternode_list ->: {:?}", list_decoded);
+        let list_encoded = unsafe { *lookup_result };
+        println!("lookup_masternode_list (encoded) ->: {:?}", list_encoded);
+        let list = unsafe { list_encoded.decode() };
+        println!("lookup_masternode_list (decoded) ->: {:?}", list);
         masternode_list_destroy(lookup_result);
-        Some(list_decoded)
+        Some(list)
     } else {
         None
     }
@@ -490,6 +489,7 @@ pub fn mnl_diff_process<
     let merkle_root_bytes = unsafe { slice::from_raw_parts(merkle_root, 32) };
 
     let base_masternode_list_hash_bytes = unsafe { slice::from_raw_parts(base_masternode_list_hash, 32) };
+    println!("mnl_diff_process: {:?}", base_masternode_list_hash_bytes.to_hex());
     let mnl_destroy = |list: *const ffi::wrapped_types::MasternodeList| unsafe { masternode_list_destroy(list) };
     let base_masternode_list = match base_masternode_list_hash_bytes.read_with::<UInt256>(&mut 0, LE) {
         Ok(data) => lookup_masternode_list(data, masternode_list_lookup, mnl_destroy),
@@ -655,12 +655,13 @@ pub fn mnl_diff_process<
                 let llmq_type = quorum_entry.llmq_type;
                 let llmq_type_u8: u8 = llmq_type.into();
                 let should_process_quorum = unsafe { should_process_llmq_of_type(llmq_type.into(), context) };
-                println!("{}:{:?} should_process: {}", llmq_type_u8, quorum_hash, should_process_quorum);
                 if should_process_quorum {
                     match lookup_masternode_list(quorum_hash, masternode_list_lookup, mnl_destroy) {
                         Some(quorum_masternode_list) => {
                             let block_height: u32 = block_height_lookup(quorum_masternode_list.block_hash);
-                            let valid_masternodes = quorum_masternode_list.valid_masternodes_for(quorum_entry.llmq_quorum_hash(), llmq_type.quorum_size(), block_height);
+                            let quorum_modifier = quorum_entry.llmq_quorum_hash();
+                            let quorum_count = llmq_type.quorum_size();
+                            let valid_masternodes = quorum_masternode_list.valid_masternodes_for(quorum_modifier, quorum_count, block_height);
                             let operator_pks: Vec<*mut [u8; 48]> = (0..valid_masternodes.len())
                                 .into_iter()
                                 .filter(|&i| quorum_entry.signers_bitset.bit_is_true_at_le_index(i as u32))
@@ -690,9 +691,7 @@ pub fn mnl_diff_process<
                                 needed_masternode_lists.push(boxed(quorum_hash.0));
                             } else {
                                 if use_insight_as_backup {
-                                    println!("use_insight_as_backup.1: {:?}", quorum_hash);
                                     unsafe { add_insight_lookup(boxed(quorum_hash.0), context) };
-                                    println!("use_insight_as_backup.2: {:?}", quorum_hash);
                                     if block_height_lookup(quorum_hash) != u32::MAX {
                                         needed_masternode_lists.push(boxed(quorum_hash.0));
                                     }
@@ -771,15 +770,15 @@ pub fn mnl_diff_process<
 
     let mut quorums = old_quorums.clone();
 
-    log_quorums_map(old_quorums.clone(), "old_quorums".to_string());
+    //log_quorums_map(old_quorums.clone(), "old_quorums".to_string());
     let quorums_to_add = added_quorums
         .clone()
         .into_iter()
         .filter(|(key, _entries)| !quorums.contains_key(key))
         .collect::<HashMap<LLMQType, HashMap<UInt256, QuorumEntry>>>();
-    log_quorums_map(added_quorums.clone(), "added_quorums".to_string());
+    //log_quorums_map(added_quorums.clone(), "added_quorums".to_string());
     quorums.extend(quorums_to_add);
-    log_quorums_map(quorums.clone(), "quorums_after_add".to_string());
+    //log_quorums_map(quorums.clone(), "quorums_after_add".to_string());
 
     quorums.iter_mut().for_each(|(quorum_type, quorums_map)| {
         if let Some(keys_to_delete) = deleted_quorums.get(quorum_type) {
@@ -793,7 +792,7 @@ pub fn mnl_diff_process<
             });
         }
     });
-    log_quorums_map(quorums.clone(), "quorums".to_string());
+    //log_quorums_map(quorums.clone(), "quorums".to_string());
     let masternode_list = MasternodeList::new(masternodes, quorums, block_hash, block_height, quorums_active);
 
     let has_valid_mn_list_root =
@@ -826,7 +825,7 @@ pub fn mnl_diff_process<
     let mut has_valid_quorum_list_root = true;
     if quorums_active {
         let q_merkle_root = masternode_list.quorum_merkle_root;
-        println!("quorumMerkleRoot: {:?}", q_merkle_root.unwrap());
+        //println!("quorumMerkleRoot: {:?}", q_merkle_root.unwrap());
         let ct_q_merkle_root = coinbase_transaction.merkle_root_llmq_list;
         println!("rootQuorumListValid: {:?} == {:?}", q_merkle_root, ct_q_merkle_root);
         has_valid_quorum_list_root =
@@ -963,7 +962,7 @@ mod tests {
     unsafe extern "C" fn validate_quorum_callback(data: *mut QuorumValidationData, _context: *const c_void) -> bool {
         let result = unbox_any(data);
         let QuorumValidationData { items, count, commitment_hash, all_commitment_aggregated_signature, quorum_threshold_signature, quorum_public_key } = *result;
-        println!("validate_quorum_callback: {:?}, {}, {:?}, {:?}, {:?}, {:?}", items, count, commitment_hash, all_commitment_aggregated_signature, quorum_threshold_signature, quorum_public_key);
+        //println!("validate_quorum_callback: {:?}, {}, {:?}, {:?}, {:?}, {:?}", items, count, commitment_hash, all_commitment_aggregated_signature, quorum_threshold_signature, quorum_public_key);
         true
     }
 
@@ -1403,6 +1402,57 @@ mod tests {
         assert_eq!(lists.len(), 29, "There should be 29 masternode lists");
     }
 
+    #[test]
+    fn test_quorum_1635216() {
+        // relayed masternode diff with baseBlockHash 0000000000000016059fad59261a58946af50b3f591b989dbc5e2b41074d88e1 (1635192) blockHash 0000000000000002540d4646a6db8e90a1a189e6233a5783a2a0cfda0b3b3916 (1635216)
+        // Issue with allCommitmentAggregatedSignatureValidated: 942c2d853532d6f05ed7738130186416a4ecc842d0054f1661875ebff4d7069252f49e2e0a7a4e0f347e4a91cc636a2b0521cc4d05aeddfc7fe3e7913a80fc56a76453cc50b22ae0cd95f679976efd34c77da917313412cead44457b05a70ad5
+        let hex_string = "e1884d07412b5ebc9d981b593f0bf56a94581a2659ad9f05160000000000000016393b0bdacfa0a283573a23e689a1a1908edba646460d540200000000000000bd0100000ab413d3cc195c070e503381ec00da7c81651c662748e870af4629ce389d6b17d48268fab900164f53c582fa72545097e97ef73f417fe71c43aef974c32496a612f4b1b76d7ed215a5e70b1e5f4f51a893356b4face4de5305fea42291372e1055545e2575c369efd6e7be3760b07f0cafd59d2d9fd605c4cca907665eca3380b00c98091be1ca5313d4998392a52cb7b84e187f450248fabdd44d742ff635780b58c1d3e3a24dfe01b7a5381cab8aff86c76a4bc1aac461d83c883b7dce3438c3983617c2afb7d284fbc5c7901566b99ef8c82db7b48eb6314fdc9c85863c20403e80e5c69ac4b35c2bd6f3995d3f8661ab7986a98d22c34d85232ca218461ba12b17abe0355cd4c00d3ee109135af499b790561bd058b3586a284e3e683d026bfe978428dd33e27975f700075389a7c1bec45e3236d2eb0eb29db9478467241f03ff030003000500010000000000000000000000000000000000000000000000000000000000000000ffffffff260390f318194d696e656420627920416e74506f6f6c202c003d038681811c0a6e0000960f0000ffffffff0224bed508000000001976a9147ee7b8cad7883ca63f22b16641b5a693d59b518f88ac089e2b07000000001976a91404dfe99f6dda028e4e6a90595096e63787a4a01c88ac0000000046020090f31800dcb682d845ce734a46f074f76567e32d90c4a3d0780597684be0004ca5c6879cf0a02d5b9101bfa450bc7520a28f0469416c7a048c7e0c6f5c75978617e6149201d4eeab21d2e4da25cfab705bad970b06ae69d813a2d2132821279079d505731307808bd2f220373b325f781829ed8866b37e3bcf7346f7b2d3187e713ccc5238b8000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffff2d4df412270f92737a064249d3e8cdebdab8babe58a5d9b4d9bddf312b6d0295ae3841a36589e8ba22ea911b749790a5aae1f13bf9859897fc2a65c8199e67beae74b432d3aefe0f5c9601e90b44c8ae2732aa69fd8387d9096ddc49576dcf10d0bad0a1fb668722ed097a000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffff8bb48d0b270f03b810b5fe540ac892498eee075e3e36467322999175ae81ccf7c863f90310ea3a1bd4f5fcf0536aca87f03f5335c66f00bd6e87424f2bea0d3aa93347124c7497d0555601d20721e943f67ab913f83797d053c693083e892923588e175cc38fbcf630f64b82659a0a8a30fdfc6af7cc8fb5f8dd3eacb54d254a1902f8030000000000000000000000000000000000ffffc0f1d43e270f14eafeee61a0fb6687f630879c084dee11186918c4a55b3c69e3cde038191dcef12aa8ae7bca0d6850b31bb8da6f1f9f21ae38fcf1bd173f7dbb7188cfcd72504f06007000366310125ba3f7faffff51376f7e5a472edc9ed38e7e8fca1cbccee62baaa70a71758d4ef560db239292abc002e3d9e7be7d1a84d4259e09380000000000000000000000000000000000ffff2d4c02ad270f008b37007fa9c5b63ff53cf4a0e04ca3d87c4973875778ff09c4c3293d6003f84e02c018dc6bd4a9453b65d3bcb782380faa8831a367d5e846aeb7b951c92ee2acceda330177bf59e9902c4e0c96ee55d56c176ec3fe6d2a3040faf208e2f0d1b68575d06cc0e16a3ad830af9164ddb8e805277d70eb44c3a50cce6b9d010000000000000000000000000000000000ffff8bb4d2f9270f11bcb3266c44d3dc0b3e2f0e4a684f07b27e53dea63959b437bb56f6b13e7dba9a8d9c1481cb0d48b72a65f1488df4a9875e440e221c2a5ffbc7cc44b9557bd1bb24bab20118e408729b30da08231a5361d5f7d44c6a227e30d287b2700a9370969b92b567f77cb67424255330c9190a53cfcf578dc90645bd04cbae2b040000000000000000000000000000000000ffff2d4d63ac270f975fc6e1bc890bef30e5f8c84d2d36c438018569ab38ca037757d1c6a3e6d22722d8b82dd20ab15d700f42b226b4bfba2b6cc6d205e25cd98b2cbdef19f8ffe91ee1fba80178332018d843bf076489996bf546ebfb5d71f1a2f2c5f32cfc21412dae4d693fc207cf63ba5c3cec91cab294a8f900b0bdf865d652dec9941c0000000000000000000000000000000000ffff44b7a295270f931114e82ec53b325d3d217da8508d27334f14b8e8e0691c17774f8d41b84e7bfd8a147ba523164b77350dc07cb459efbdd44494bedb40a44dffe2a773146bce50b870e10102010a412b55c01394b1ebb86c83dfca9d531d60989b64108ccd1500000000000000040a412b55c01394b1ebb86c83dfca9d531d60989b64108ccd150000000000000002010001e1884d07412b5ebc9d981b593f0bf56a94581a2659ad9f05160000000000000032ffffffffffff0332ffffffffffff030e06b2aafd34cff2887d4bcb4b139b504f16a1f723d6e81313f45dd61a8fea4e59cb4a9dabb2df4860ab91029e845b284d7c064e18960b183e112a95697733ced3725abcd6f30f1144778ad5fdb5fda503900f1ecf2cec40516832c68313fae9413e35fc54c1494197e1019faebff5f5a04b95d238526d388c6e4afe247ed77a0407e4f28020d00ef496380554498b22a83a68c8fda1d65db21f1d032baa5ed5de585c571a5de4e50414d33f666db2aa942c2d853532d6f05ed7738130186416a4ecc842d0054f1661875ebff4d7069252f49e2e0a7a4e0f347e4a91cc636a2b0521cc4d05aeddfc7fe3e7913a80fc56a76453cc50b22ae0cd95f679976efd34c77da917313412cead44457b05a70ad5010004e1884d07412b5ebc9d981b593f0bf56a94581a2659ad9f051600000000000000647fffffffffffffffffffffff0f647fffffffffffffffffffffff0f968df14114d0ff3a1a1fe275f41da37f0c46cdc484008cd54254a4379b9640b83906cab5cc1e7671584d944e4d8754fa94c3c4d269dfabd958175e2f2638561da9789cdef961a0428e88bacf7eeea6d901d513bd864cc843cc243ae28d28250f0d094cd14005de5894c5115fc36fdc5a2e5523dbdd88dff1641563f97a0539150db36cb35b315d0508b5f7b7e2b0484f1ae9ec353b25798a4d12e15c3b8b4c34fd988d04590ac53a5f54e0018b8ffdb0133f013af30d3300beb82bf61648ec734b838e44c495891270e75befba4a83094e93cdb816629d4d315b35225013245001e038e2be3c4183645632cd6eb692d8e94ebcf6bf71b510291bdef7f9d5e80d8fb1e007c36728d3b80c50ab2c353713";
+        let bytes = Vec::from_hex(&hex_string).unwrap();
+        let length = bytes.len();
+        let c_array = bytes.as_ptr();
+        // let base_masternode_list = null_mut();
+        let merkle_root = [0u8; 32].as_ptr();
+
+        // 7aa9eda55b75ba988b2df31c3482143c2d7c69aefdd5a6acf4e7e26448ba4487
+
+        let offset = &mut 0;
+        assert!(length - *offset >= 32);
+        let base_block_hash = bytes.read_with::<UInt256>(offset, LE).unwrap();
+        assert_ne!(base_block_hash, UInt256::default() /*UINT256_ZERO*/, "Base block hash should NOT be empty here");
+        assert!(length - *offset >= 32);
+        *offset += 32;
+        assert!(length - *offset >= 4);
+        // let total_transactions = bytes.read_with::<u32>(offset, LE).unwrap();
+        // assert_eq!(total_transactions, should_be_total_transactions, "Invalid transaction count");
+        let use_insight_as_backup = false;
+        let chain = ChainType::MainNet;
+        let result = mnl_diff_process(
+            c_array,
+            length,
+            null_mut(),
+            merkle_root,
+            false,
+            |hash| {
+                let h = hash.clone().reversed();
+                println!("block_height_lookup: {}", h);
+
+                if UInt256::from_hex("0000000000000002540d4646a6db8e90a1a189e6233a5783a2a0cfda0b3b3916").unwrap() == h {
+                    1635216
+                } else {
+                    0
+                }
+            },
+            |hash| null_mut(),
+            masternode_list_destroy,
+            add_insight_lookup,
+            should_process_llmq_of_type,
+            validate_quorum_callback,
+            &mut (FFIContext { chain }) as *mut _ as *mut std::ffi::c_void
+        );
+        println!("result: {:?}", result);
+
+    }
+
     pub fn block_height_for(chain: ChainType, key: &str) -> u32 {
         match chain {
             ChainType::MainNet => match key {
@@ -1596,7 +1646,7 @@ mod tests {
             let result = unsafe { *result };
             println!("result: [{:?}]", result);
 
-            println!("MNDiff: {} added, {} modified", result.added_masternodes_count, result.modified_masternodes_count);
+            //println!("MNDiff: {} added, {} modified", result.added_masternodes_count, result.modified_masternodes_count);
             //2022-02-15 01:28:34.484726+0300 DashSync_Example[65619:6516496] MNDiff: 19 added, 19 removed, 5 modified
 
             assert_diff_result(chain, result);
