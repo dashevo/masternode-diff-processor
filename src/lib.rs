@@ -361,7 +361,7 @@ pub extern "C" fn mndiff_process(
             });
         }
     });
-    log_hashes(deleted_masternode_hashes.clone(), "deleted_masternodes".to_string());
+    // log_hashes(deleted_masternode_hashes, "deleted_masternodes".to_string());
     log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
     log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
     log_masternodes_map(masternodes.clone(), "masternodes".to_string());
@@ -611,11 +611,11 @@ pub fn mnl_diff_process<
             acc.insert(hash, added_or_modified_masternodes[&hash].clone());
             acc
         });
-    println!("modified_masternodes {}: [", block_height);
-    for masternode in masternodes.clone() {
-        println!("{:?}", masternode);
-    }
-    println!("]");
+    // println!("modified_masternodes {}: [", block_height);
+    // for masternode in masternodes.clone() {
+    //     println!("{:?}", masternode);
+    // }
+    // println!("]");
 
     let mut deleted_quorums: HashMap<LLMQType, Vec<UInt256>> = HashMap::new();
     let mut added_quorums: HashMap<LLMQType, HashMap<UInt256, QuorumEntry>> = HashMap::new();
@@ -776,7 +776,7 @@ pub fn mnl_diff_process<
             masternodes.insert((*hash).clone(), (*modified).clone());
         }
     });
-    log_hashes(deleted_masternode_hashes.clone(), "deleted_masternodes".to_string());
+    // log_hashes(&mut deleted_masternode_hashes, "deleted_masternodes".to_string());
     log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
     log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
     log_masternodes_map(masternodes.clone(), "masternodes".to_string());
@@ -913,9 +913,9 @@ fn log_masternodes_map(nodes: BTreeMap<UInt256, MasternodeEntry>, id: String) {
     println!("]");
 }
 
-fn log_hashes(hashes: Vec<UInt256>, id: String) {
+fn log_hashes(hashes: &mut Vec<UInt256>, id: String) {
     println!("{} hashes: [", id);
-    for hash in hashes {
+    for hash in hashes.clone() {
         println!("{}", hash);
     }
     println!("]");
