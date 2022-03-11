@@ -361,6 +361,10 @@ pub extern "C" fn mndiff_process(
             });
         }
     });
+    log_hashes(deleted_masternode_hashes.clone(), "deleted_masternodes".to_string());
+    log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
+    log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
+    log_masternodes_map(masternodes.clone(), "masternodes".to_string());
     let masternode_list = MasternodeList::new(masternodes, quorums, block_hash, block_height, quorums_active);
 
     let has_valid_mn_list_root =
@@ -607,6 +611,11 @@ pub fn mnl_diff_process<
             acc.insert(hash, added_or_modified_masternodes[&hash].clone());
             acc
         });
+    println!("modified_masternodes {}: [", block_height);
+    for masternode in masternodes.clone() {
+        println!("{:?}", masternode);
+    }
+    println!("]");
 
     let mut deleted_quorums: HashMap<LLMQType, Vec<UInt256>> = HashMap::new();
     let mut added_quorums: HashMap<LLMQType, HashMap<UInt256, QuorumEntry>> = HashMap::new();
@@ -767,7 +776,10 @@ pub fn mnl_diff_process<
             masternodes.insert((*hash).clone(), (*modified).clone());
         }
     });
-
+    log_hashes(deleted_masternode_hashes.clone(), "deleted_masternodes".to_string());
+    log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
+    log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
+    log_masternodes_map(masternodes.clone(), "masternodes".to_string());
     let mut quorums = old_quorums.clone();
 
     //log_quorums_map(old_quorums.clone(), "old_quorums".to_string());
@@ -890,6 +902,21 @@ fn log_quorums_map(q: HashMap<LLMQType, HashMap<UInt256, QuorumEntry>>, id: Stri
         for (hash, entry) in map {
             println!("{}:{}", qqtype, hash);
         }
+    }
+    println!("]");
+}
+fn log_masternodes_map(nodes: BTreeMap<UInt256, MasternodeEntry>, id: String) {
+    println!("{} masternodes: [", id);
+    for (hash, _node) in nodes {
+        println!("{}", hash);
+    }
+    println!("]");
+}
+
+fn log_hashes(hashes: Vec<UInt256>, id: String) {
+    println!("{} hashes: [", id);
+    for hash in hashes {
+        println!("{}", hash);
     }
     println!("]");
 }

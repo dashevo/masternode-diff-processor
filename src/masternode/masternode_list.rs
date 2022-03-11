@@ -76,11 +76,11 @@ impl<'a> MasternodeList<'a> {
         }).collect();
         let mut scores: Vec<UInt256> = score_dictionary.clone().into_keys().collect();
         scores.sort_by(|&s1, &s2| s2.clone().reversed().cmp(&s1.clone().reversed()));
-        println!("validMasternodes.scores for {}: {}: {} [", quorum_modifier, quorum_count, block_height);
-        for score in scores.clone() {
-            println!("{:?}", score);
-        }
-        println!("]");
+        // println!("validMasternodes.scores for {}: {}: {} [", quorum_modifier, quorum_count, block_height);
+        // for score in scores.clone() {
+        //     println!("{:?}", score);
+        // }
+        // println!("]");
         let mut masternodes: Vec<MasternodeEntry> = Vec::new();
         let masternodes_in_list_count = self.masternodes.len();
         let count = min(masternodes_in_list_count, scores.len());
