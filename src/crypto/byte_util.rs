@@ -219,12 +219,20 @@ macro_rules! define_bytes_to_big_uint {
         impl Zeroable for $uint_type {
             fn is_zero(&self) -> bool {
                 for i in 0..$byte_len {
-                    if self.0[i] == 1 {
-                        return true;
+                    if self.0[i] > 0 {
+                        return false;
                     }
                 }
-                false
+                true
             }
+            // fn is_zero(&self) -> bool {
+            //     for i in 0..$byte_len {
+            //         if self.0[i] == 1 {
+            //             return true;
+            //         }
+            //     }
+            //     false
+            // }
         }
     }
 }

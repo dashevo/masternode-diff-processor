@@ -56,12 +56,22 @@ impl MasternodeEntry {
     }
 
     pub fn confirmed_hash_at(&self, block_height: u32) -> Option<UInt256> {
-        if self.known_confirmed_at_height.is_some() &&
-            self.known_confirmed_at_height.unwrap() > block_height {
-            None
-        } else {
-            Some(self.confirmed_hash)
+        match self.known_confirmed_at_height {
+            Some(h) => if h > block_height { None } else { Some(self.confirmed_hash) },
+            None => None
         }
+        // if self.known_confirmed_at_height.is_some() &&
+        //     self.known_confirmed_at_height.unwrap() > block_height {
+        //     None
+        // } else {
+        //     Some(self.confirmed_hash)
+        // }
+        // if (!self.knownConfirmedAtHeight) return self.confirmedHash;
+        // if (self.knownConfirmedAtHeight > blockHeight) {
+        //     return UINT256_ZERO;
+        // } else {
+        //     return self.confirmedHash;
+        // }
     }
 
     pub fn confirmed_hash_hashed_with_provider_registration_transaction_hash_at(&self, block_height: u32) -> Option<UInt256> {

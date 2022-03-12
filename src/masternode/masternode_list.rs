@@ -4,7 +4,7 @@ use crate::common::llmq_type::LLMQType;
 use crate::consensus::Encodable;
 use crate::crypto::byte_util::{merkle_root_from_hashes, Reversable, UInt256};
 use crate::hashes::{Hash, sha256};
-use crate::log_masternodes_map;
+use crate::{log_masternodes_map, Zeroable};
 use crate::masternode::quorum_entry::QuorumEntry;
 use crate::masternode::masternode_entry::MasternodeEntry;
 
@@ -71,13 +71,18 @@ impl<'a> MasternodeList<'a> {
         log_masternodes_map(self.masternodes.clone(), f);
         println!("scoreDictionaryForQuorumModifier: {}, {} [", quorum_modifier, block_height);
         let mut score_dictionary: BTreeMap<UInt256, MasternodeEntry> = self.masternodes.clone().into_iter().filter_map(|(h, entry)| {
-            let score = MasternodeList::masternode_score(entry.clone(), quorum_modifier, block_height);
-            println!("{}:{:?}", h, score);
-            if score.is_some() && !score.unwrap().0.is_empty() {
-                Some((score.unwrap(), entry))
-            } else {
-                None
+            // let score = MasternodeList::masternode_score(entry.clone(), quorum_modifier, block_height);
+            // println!("{}:{:?}", h, score);
+            // if score.is_some() && !score.unwrap().0.is_empty() {
+            //     Some((score.unwrap(), entry))
+            // } else {
+            //     None
+            // }
+            match MasternodeList::masternode_score(entry.clone(), quorum_modifier, block_height) {
+                Some(score) => if score.is_zero() { None } else { Some((score, entry)) },
+                None => None
             }
+
         }).collect();
         println!("]");
         let mut scores: Vec<UInt256> = score_dictionary.clone().into_keys().collect();
@@ -108,6 +113,17 @@ impl<'a> MasternodeList<'a> {
         println!("]");
         masternodes
     }
+//     - (UInt256)masternodeScore:(DSSimplifiedMasternodeEntry *)simplifiedMasternodeEntry modifier:(UInt256)modifier atBlockHeight:(uint32_t)blockHeight {
+//     NSParameterAssert(simplifiedMasternodeEntry);
+//
+//     if (uint256_is_zero([simplifiedMasternodeEntry confirmedHashAtBlockHeight:blockHeight])) {
+//     return UINT256_ZERO;
+//     }
+//     NSMutableData *data = [NSMutableData data];
+//     [data appendData:[NSData dataWithUInt256:[simplifiedMasternodeEntry confirmedHashHashedWithProviderRegistrationTransactionHashAtBlockHeight:blockHeight]]];
+//     [data appendData:[NSData dataWithUInt256:modifier]];
+//     return data.SHA256;
+// }
 
     pub fn masternode_score(masternode_entry: MasternodeEntry, modifier: UInt256, block_height: u32) -> Option<UInt256> {
         if masternode_entry.confirmed_hash_at(block_height).is_none() {

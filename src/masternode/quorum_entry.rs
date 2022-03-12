@@ -2,7 +2,6 @@ use std::convert::Into;
 use byte::{BytesExt, LE};
 use byte::ctx::Bytes;
 use hashes::{Hash, sha256d};
-use hashes::hex::ToHex;
 use crate::common::llmq_type::LLMQType;
 use crate::consensus::{Decodable, Encodable, WriteExt};
 use crate::consensus::encode::VarInt;
