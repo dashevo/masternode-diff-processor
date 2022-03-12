@@ -69,14 +69,17 @@ impl<'a> MasternodeList<'a> {
     pub fn valid_masternodes_for(&self, quorum_modifier: UInt256, quorum_count: u32, block_height: u32) -> Vec<MasternodeEntry> {
         let f = format!("validMasternodes.masternodes for {}: {}: {}", quorum_modifier, quorum_count, block_height);
         log_masternodes_map(self.masternodes.clone(), f);
-        let mut score_dictionary: BTreeMap<UInt256, MasternodeEntry> = self.masternodes.clone().into_iter().filter_map(|(_, entry)| {
+        println!("scoreDictionaryForQuorumModifier: {}, {} [", quorum_modifier, block_height);
+        let mut score_dictionary: BTreeMap<UInt256, MasternodeEntry> = self.masternodes.clone().into_iter().filter_map(|(h, entry)| {
             let score = MasternodeList::masternode_score(entry.clone(), quorum_modifier, block_height);
+            println!("{}:{:?}", h, score);
             if score.is_some() && !score.unwrap().0.is_empty() {
                 Some((score.unwrap(), entry))
             } else {
                 None
             }
         }).collect();
+        println!("]");
         let mut scores: Vec<UInt256> = score_dictionary.clone().into_keys().collect();
         scores.sort_by(|&s1, &s2| s2.clone().reversed().cmp(&s1.clone().reversed()));
         println!("validMasternodes.scores for {}: {}: {} [", quorum_modifier, quorum_count, block_height);
