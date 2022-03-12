@@ -362,9 +362,9 @@ pub extern "C" fn mndiff_process(
         }
     });
     // log_hashes(deleted_masternode_hashes, "deleted_masternodes".to_string());
-    log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
-    log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
-    log_masternodes_map(masternodes.clone(), "masternodes".to_string());
+    // log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
+    // log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
+    // log_masternodes_map(masternodes.clone(), "masternodes".to_string());
     let masternode_list = MasternodeList::new(masternodes, quorums, block_hash, block_height, quorums_active);
 
     let has_valid_mn_list_root =
@@ -777,9 +777,9 @@ pub fn mnl_diff_process<
         }
     });
     // log_hashes(&mut deleted_masternode_hashes, "deleted_masternodes".to_string());
-    log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
-    log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
-    log_masternodes_map(masternodes.clone(), "masternodes".to_string());
+    // log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
+    // log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
+    // log_masternodes_map(masternodes.clone(), "masternodes".to_string());
     let mut quorums = old_quorums.clone();
 
     //log_quorums_map(old_quorums.clone(), "old_quorums".to_string());
