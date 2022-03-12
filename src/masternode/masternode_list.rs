@@ -4,6 +4,7 @@ use crate::common::llmq_type::LLMQType;
 use crate::consensus::Encodable;
 use crate::crypto::byte_util::{merkle_root_from_hashes, Reversable, UInt256};
 use crate::hashes::{Hash, sha256};
+use crate::log_masternodes_map;
 use crate::masternode::quorum_entry::QuorumEntry;
 use crate::masternode::masternode_entry::MasternodeEntry;
 
@@ -66,6 +67,8 @@ impl<'a> MasternodeList<'a> {
     }
 
     pub fn valid_masternodes_for(&self, quorum_modifier: UInt256, quorum_count: u32, block_height: u32) -> Vec<MasternodeEntry> {
+        let f = format!("validMasternodes.masternodes for {}: {}: {}", quorum_modifier, quorum_count, block_height);
+        log_masternodes_map(self.masternodes.clone(), f);
         let mut score_dictionary: BTreeMap<UInt256, MasternodeEntry> = self.masternodes.clone().into_iter().filter_map(|(_, entry)| {
             let score = MasternodeList::masternode_score(entry.clone(), quorum_modifier, block_height);
             if score.is_some() && !score.unwrap().0.is_empty() {
