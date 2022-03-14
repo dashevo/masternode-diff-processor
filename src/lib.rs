@@ -24,6 +24,7 @@ pub mod ffi;
 use std::slice;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
+use std::time::Instant;
 use byte::*;
 use hashes::hex::ToHex;
 use ffi::wrapped_types;
@@ -63,6 +64,8 @@ pub extern "C" fn mndiff_process(
     block_height_lookup: BlockHeightLookup,
     context: *const c_void, // External Masternode Manager Diff Message Context ()
 ) -> *mut MndiffResult {
+    let t0 = Instant::now();
+    println!("mndiff_process: {:?}", t0);
     let message: &[u8] = unsafe { slice::from_raw_parts(message_arr, message_length as usize) };
     let merkle_root_bytes = unsafe { slice::from_raw_parts(merkle_root, 32) };
     let base_masternode_list = if !base_masternode_list.is_null() {
@@ -229,7 +232,9 @@ pub extern "C" fn mndiff_process(
                 let llmq_type = quorum_entry.llmq_type;
                 let should_process_quorum = unsafe { should_process_quorum_of_type(llmq_type.into(), context) };
                 if should_process_quorum {
+                    let t_mnl = Instant::now();
                     let lookup_result = unsafe { masternode_list_lookup(boxed(quorum_hash.0), context) };
+                    println!("mndiff_process.masternode_lookup_time: {:?}", Instant::now().duration_since(t_mnl));
                     if !lookup_result.is_null() {
                         let quorum_masternode_list = unsafe { (*lookup_result).decode() };
                         unsafe { masternode_list_destroy(lookup_result); }
@@ -243,6 +248,7 @@ pub extern "C" fn mndiff_process(
                             })
                             .collect();
                         let operator_public_keys_count = operator_pks.len();
+                        let t_vq = Instant::now();
                         let is_valid_signature = unsafe {
                             validate_quorum_callback(
                                 boxed(QuorumValidationData {
@@ -256,7 +262,10 @@ pub extern "C" fn mndiff_process(
                                 context
                             )
                         };
+                        println!("mndiff_process.quorum_sign_validation_time: {:?}", Instant::now().duration_since(t_vq));
+                        let t_qvp = Instant::now();
                         has_valid_quorums &= quorum_entry.validate_payload() && is_valid_signature;
+                        println!("mndiff_process.quorum_payload_validation_time: {:?}", Instant::now().duration_since(t_qvp));
                         if has_valid_quorums {
                             quorum_entry.verified = true;
                         }
@@ -407,7 +416,9 @@ pub extern "C" fn mndiff_process(
                      masternode_list.quorum_merkle_root);
         }
     }
+    let t1 = Instant::now();
     let has_valid_coinbase = merkle_tree.has_root(desired_merkle_root);
+    println!("mndiff_process.merkle_tree_validation_time: {:?}", Instant::now().duration_since(t1));
 
     let added_masternodes_count = added_masternodes.len();
     let added_masternodes = encode_masternodes_map(&added_masternodes);
@@ -437,6 +448,7 @@ pub extern "C" fn mndiff_process(
         needed_masternode_lists,
         needed_masternode_lists_count
     };
+    println!("mndiff_process.end: {:?}", Instant::now().duration_since(t0));
     boxed(result)
 }
 
@@ -452,7 +464,10 @@ pub unsafe extern fn mndiff_quorum_validation_data_destroy(data: *mut QuorumVali
 
 #[no_mangle]
 pub unsafe extern fn mndiff_destroy(result: *mut MndiffResult) {
+    let t0 = Instant::now();
+    println!("mndiff_destroy.start: {:?}", t0);
     unbox_result(result);
+    println!("mndiff_destroy.end: {:?}", Instant::now().duration_since(t0));
 }
 
 
