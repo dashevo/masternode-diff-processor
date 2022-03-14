@@ -225,14 +225,6 @@ macro_rules! define_bytes_to_big_uint {
                 }
                 true
             }
-            // fn is_zero(&self) -> bool {
-            //     for i in 0..$byte_len {
-            //         if self.0[i] == 1 {
-            //             return true;
-            //         }
-            //     }
-            //     false
-            // }
         }
     }
 }

@@ -453,7 +453,6 @@ pub fn lookup_masternode_list<'a,
     masternode_list_lookup: MNL,
     masternode_list_destroy: MND,
 ) -> Option<MasternodeList<'a>> {
-    //println!("lookup_masternode_list <-: {:?}", hex_with_data(block_hash.0.as_slice()));
     let lookup_result = masternode_list_lookup(block_hash);
     if !lookup_result.is_null() {
         let list_encoded = unsafe { *lookup_result };
@@ -483,9 +482,6 @@ pub fn mnl_diff_process<
     validate_llmq_callback: ValidateQuorumCallback,
     context: *const c_void, // External Masternode Manager Diff Message Context ()
 ) -> *mut MndiffResult {
-
-
-
 
     let message: &[u8] = unsafe { slice::from_raw_parts(message_arr, message_length as usize) };
     let merkle_root_bytes = unsafe { slice::from_raw_parts(merkle_root, 32) };
