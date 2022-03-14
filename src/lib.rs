@@ -362,9 +362,9 @@ pub extern "C" fn mndiff_process(
         }
     });
     // log_hashes(deleted_masternode_hashes, "deleted_masternodes".to_string());
-    log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
-    log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
-    log_masternodes_map(masternodes.clone(), "masternodes".to_string());
+    // log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
+    // log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
+    // log_masternodes_map(masternodes.clone(), "masternodes".to_string());
     let masternode_list = MasternodeList::new(masternodes, quorums, block_hash, block_height, quorums_active);
 
     let has_valid_mn_list_root =
@@ -457,9 +457,7 @@ pub fn lookup_masternode_list<'a,
     let lookup_result = masternode_list_lookup(block_hash);
     if !lookup_result.is_null() {
         let list_encoded = unsafe { *lookup_result };
-        println!("lookup_masternode_list (encoded) ->: {:?}", list_encoded);
         let list = unsafe { list_encoded.decode() };
-        println!("lookup_masternode_list (decoded) ->: {:?}", list);
         masternode_list_destroy(lookup_result);
         Some(list)
     } else {
@@ -777,9 +775,9 @@ pub fn mnl_diff_process<
         }
     });
     // log_hashes(&mut deleted_masternode_hashes, "deleted_masternodes".to_string());
-    log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
-    log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
-    log_masternodes_map(masternodes.clone(), "masternodes".to_string());
+    // log_masternodes_map(added_masternodes.clone(), "added_masternodes".to_string());
+    // log_masternodes_map(modified_masternodes.clone(), "modified_masternodes".to_string());
+    // log_masternodes_map(masternodes.clone(), "masternodes".to_string());
     let mut quorums = old_quorums.clone();
 
     //log_quorums_map(old_quorums.clone(), "old_quorums".to_string());
@@ -1592,6 +1590,31 @@ mod tests {
                 "0000000000000013b130038d0599cb5a65165fc03b1b38fe2dd1a3bad6e253df" => 1092312,
                 "00000000000000082cb9d6d169dc625f64a6a24756ba796eaab131a998b42910" => 1091928,
                 "0000000000000001e358bce8df79c24def4787bf0bf7af25c040342fae4a18ce" => 1091880,
+
+                "000000000000000353e1b7d69c8af30cb80e8548fb0c89456c37b2e5ffccc33f" => 1635264,
+                "000000000000000e721e146b79ed516e895adf5b36c1cf3363fd0e80522e7e8d" => 1635552,
+                "00000000000000124f2870388ab1751b48cc92216872772fa3ef36e8084e33d6" => 1635648,
+                "000000000000000424fb9d772a323aa162855bce74b660255d59a44e98c918a9" => 1635672,
+                "000000000000000ffda0918466f4dda2db4c1381c4f0114a46182875f86cfb49" => 1635696,
+                "000000000000001712dff47d95589b97c6c8886273828d07c38175f2a53902c1" => 1635720,
+                "00000000000000061e92fa5dcee396382788cf80df64ebaa23db29f241edac33" => 1635744,
+                "000000000000000bb9c90ff678ad2c6c493a1805e7441c8fd38a2580390d700c" => 1635768,
+                "00000000000000180e2bfb9338b4e71f3a9d29c6a8a79dcbc69122563ceba226" => 1635792,
+                "00000000000000156929292d26b1a3c60e475dd891798c9b212679e28c0d5b1f" => 1635816,
+                "00000000000000209d0e2ac532eb0a1440d11cc285b0010b79aa09e696862a93" => 1635840,
+                "00000000000000051c504f4c20f045ad1223bb1d4a059eb391c763a91b7751ea" => 1635864,
+                "000000000000000b8ed50258b94bf43288447a45c981d0bc180832efbc7d3227" => 1635888,
+                "00000000000000188c0d9c0c1d443301a7affb68ba5314e58738c8401228e887" => 1635912,
+                "00000000000000163e4e319dfcc784bd36e129e1a10236d09df33ab0e6378b74" => 1635936,
+                "0000000000000026564467dbebe2bc9162e01172975434d327b61471b003fb75" => 1635960,
+                "00000000000000198cb7cda6805edede14efbcbcb41969b9b5de35e38ba7ffe0" => 1635984,
+                "0000000000000009443e91eec2e7677e882aea860e05371f97f02f7997643476" => 1636008,
+                "000000000000000881748387e434785d55382a2b0f15fba7741fffa860f2eedc" => 1636032,
+                "000000000000000be7b1e4dffa6ab36e28eede0681c7a453b9dfc4bedb228fbf" => 1636056,
+                "000000000000000b2d0294f36843b11f7f91031b237b97b03a915dd01f77bf7a" => 1636080,
+                "00000000000000189b941d7afd673e09bd43efa4afe1e9e6f568f2fe65b3a242" => 1636104,
+                "0000000000000018d589510ef70bb8e99f1a0e9476ad703fd586c2efe707dd48" => 1636128,
+
                 _ => u32::MAX
             },
             ChainType::TestNet => match key {
@@ -1713,6 +1736,42 @@ mod tests {
             ChainType::TestNet => LLMQType::Llmqtype50_60.into(),
             ChainType::DevNet => LLMQType::Llmqtype10_60.into()
         }
+    }
+
+
+    #[test]
+    fn test_mainnet_1636056_1636080() {
+        let chain = ChainType::MainNet;
+        let files = vec![
+            "MNL_0_1635264.dat".to_string(),
+            "MNL_1635264_1635552.dat".to_string(),
+            "MNL_1635552_1635648.dat".to_string(),
+            "MNL_1635648_1635672.dat".to_string(),
+            "MNL_1635672_1635696.dat".to_string(),
+            "MNL_1635696_1635720.dat".to_string(),
+            "MNL_1635720_1635744.dat".to_string(),
+            "MNL_1635744_1635768.dat".to_string(),
+            "MNL_1635768_1635792.dat".to_string(),
+            "MNL_1635792_1635816.dat".to_string(),
+            "MNL_1635816_1635840.dat".to_string(),
+            "MNL_1635840_1635864.dat".to_string(),
+            "MNL_1635864_1635888.dat".to_string(),
+            "MNL_1635888_1635912.dat".to_string(),
+            "MNL_1635912_1635936.dat".to_string(),
+            "MNL_1635936_1635960.dat".to_string(),
+            "MNL_1635960_1635984.dat".to_string(),
+            "MNL_1635984_1636008.dat".to_string(),
+            "MNL_1636008_1636032.dat".to_string(),
+            "MNL_1636032_1636056.dat".to_string(),
+            "MNL_1636056_1636080.dat".to_string(),
+            "MNL_1636080_1636104.dat".to_string(),
+            "MNL_1636104_1636128.dat".to_string(),
+        ];
+        let block_height_lookup = |block_hash: UInt256| block_height_for(chain, block_hash.clone().reversed().0.to_hex().as_str());
+        let (success, lists) = load_masternode_lists_for_files(files, chain, block_height_lookup);
+        assert!(success, "Unsuccessful");
+        println!("lists: {}", lists.len());
+        // assert_eq!(lists.len(), 29, "There should be 29 masternode lists");
     }
 
 }
