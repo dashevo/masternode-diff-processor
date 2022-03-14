@@ -424,6 +424,7 @@ pub extern "C" fn mndiff_process(
     let has_valid_coinbase = merkle_tree.has_root(desired_merkle_root);
     println!("mndiff_process.merkle_tree_validation_time: {:?}", Instant::now().duration_since(t1));
 
+    let t_bx = Instant::now();
     let added_masternodes_count = added_masternodes.len();
     let added_masternodes = encode_masternodes_map(&added_masternodes);
     let modified_masternodes_count = modified_masternodes.len();
@@ -435,6 +436,7 @@ pub extern "C" fn mndiff_process(
     let needed_masternode_lists = boxed_vec(needed_masternode_lists);
 
     let masternode_list = boxed(masternode_list.encode());
+    println!("mndiff_process.boxing_time: {:?}", Instant::now().duration_since(t_bx));
 
     let result = MndiffResult {
         has_found_coinbase,
