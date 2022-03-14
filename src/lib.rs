@@ -218,6 +218,7 @@ pub extern "C" fn mndiff_process(
         }
 
         // added quorums
+        let t_aqp = Instant::now();
         if message_length - *offset < 1 { return failure(); }
         let added_quorums_var_int = match VarInt::consensus_decode(&message[*offset..]) {
             Ok(data) => data,
@@ -228,6 +229,7 @@ pub extern "C" fn mndiff_process(
         for _i in 0..added_quorums_count {
             if let Some(mut quorum_entry) = QuorumEntry::new(message, *offset) {
                 *offset += quorum_entry.length;
+                let t_qp = Instant::now();
                 let quorum_hash = quorum_entry.quorum_hash;
                 let llmq_type = quorum_entry.llmq_type;
                 let should_process_quorum = unsafe { should_process_quorum_of_type(llmq_type.into(), context) };
@@ -282,12 +284,14 @@ pub extern "C" fn mndiff_process(
                         }
                     }
                 }
+                println!("mndiff_process.process_quorum: {:?}", Instant::now().duration_since(t_qp));
                 added_quorums
                     .entry(llmq_type)
                     .or_insert(HashMap::new())
                     .insert(quorum_hash, quorum_entry);
             }
         }
+        println!("mndiff_process.process_added_quorums: {:?}", Instant::now().duration_since(t_aqp));
     }
 
     let mut masternodes = if has_old {
