@@ -1,4 +1,5 @@
 use std::convert::Into;
+use std::time::Instant;
 use byte::{BytesExt, LE};
 use byte::ctx::Bytes;
 use hashes::{Hash, sha256d};
@@ -95,6 +96,7 @@ impl<'a> QuorumEntry<'a> {
             Err(_err) => { return None; }
         };
         let llmq_type: LLMQType = llmq_type.into();
+        let t_qeh = Instant::now();
         let q_data = &QuorumEntry::generate_data(
             version, llmq_type, quorum_hash,
             signers_count.clone(), &signers_bitset,
@@ -102,6 +104,7 @@ impl<'a> QuorumEntry<'a> {
             quorum_public_key, quorum_verification_vector_hash, quorum_threshold_signature,
             all_commitment_aggregated_signature);
         let quorum_entry_hash = UInt256(sha256d::Hash::hash(q_data).into_inner());
+        println!("calculate quorumEntryHash: {:?}", Instant::now().duration_since(t_qeh));
         let length = *offset - data_offset;
         Some(QuorumEntry {
             version,

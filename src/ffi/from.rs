@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::slice;
+use std::time::Instant;
 use crate::common::block_data::BlockData;
 use crate::common::llmq_type::LLMQType;
 use crate::common::socket_address::SocketAddress;
@@ -19,6 +20,7 @@ impl<'a> FromFFI<'a> for wrapped_types::MasternodeList {
     type Item = masternode_list::MasternodeList<'a>;
 
     unsafe fn decode(&self) -> Self::Item {
+        let t_mnl_dec = Instant::now();
         let block_hash = UInt256(*self.block_hash);
         let known_height = self.known_height;
         let masternode_merkle_root = if self.masternode_merkle_root.is_null() {
@@ -68,6 +70,7 @@ impl<'a> FromFFI<'a> for wrapped_types::MasternodeList {
             masternodes,
             quorums
         };
+        println!("MasternodeList reflection: {:?}", Instant::now().duration_since(t_mnl_dec));
         unwrapped
     }
 }
