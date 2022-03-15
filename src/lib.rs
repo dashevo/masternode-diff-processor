@@ -240,7 +240,7 @@ pub extern "C" fn mndiff_process(
                 if should_process_quorum {
                     let t_mnl = Instant::now();
                     let lookup_result = unsafe { masternode_list_lookup(boxed(quorum_hash.0), context) };
-                    println!("mndiff_process.masternode_lookup_time: {:?}", Instant::now().duration_since(t_mnl));
+                    //println!("mndiff_process.masternode_lookup_time: {:?}", Instant::now().duration_since(t_mnl));
                     if !lookup_result.is_null() {
                         let quorum_masternode_list = unsafe { (*lookup_result).decode() };
                         unsafe { masternode_list_destroy(lookup_result); }
@@ -271,7 +271,7 @@ pub extern "C" fn mndiff_process(
                         println!("mndiff_process.quorum_sign_validation_time: {:?}", Instant::now().duration_since(t_vq));
                         let t_qvp = Instant::now();
                         has_valid_quorums &= quorum_entry.validate_payload() && is_valid_signature;
-                        println!("mndiff_process.quorum_payload_validation_time: {:?}", Instant::now().duration_since(t_qvp));
+                        //println!("mndiff_process.quorum_payload_validation_time: {:?}", Instant::now().duration_since(t_qvp));
                         if has_valid_quorums {
                             quorum_entry.verified = true;
                         }
@@ -288,14 +288,14 @@ pub extern "C" fn mndiff_process(
                         }
                     }
                 }
-                println!("mndiff_process.process_quorum: {:?}", Instant::now().duration_since(t_qp));
+                //println!("mndiff_process.process_quorum: {:?}", Instant::now().duration_since(t_qp));
                 added_quorums
                     .entry(llmq_type)
                     .or_insert(HashMap::new())
                     .insert(quorum_hash, quorum_entry);
             }
         }
-        println!("mndiff_process.process_added_quorums: {:?}", Instant::now().duration_since(t_aqp));
+        //println!("mndiff_process.process_added_quorums: {:?}", Instant::now().duration_since(t_aqp));
     }
     let t5 = Instant::now();
     println!("mndiff_process.process quorums: {:?}", t5.duration_since(t4));
@@ -379,7 +379,10 @@ pub extern "C" fn mndiff_process(
             });
         }
     });
+    let t6 = Instant::now();
+    println!("mndiff_process.before create mnl: {:?}", t6.duration_since(t5));
     let masternode_list = MasternodeList::new(masternodes, quorums, block_hash, block_height, quorums_active);
+    println!("mndiff_process.after create mnl: {:?}", Instant::now().duration_since(t6));
 
     let has_valid_mn_list_root =
         if let Some(mn_merkle_root) = masternode_list.masternode_merkle_root {
@@ -425,6 +428,8 @@ pub extern "C" fn mndiff_process(
                      masternode_list.quorum_merkle_root);
         }
     }
+    let t7 = Instant::now();
+    println!("mndiff_process.before merkle_tree_validation_time: {:?}", t7.duration_since(t6));
     let t1 = Instant::now();
     let has_valid_coinbase = merkle_tree.has_root(desired_merkle_root);
     println!("mndiff_process.merkle_tree_validation_time: {:?}", Instant::now().duration_since(t1));
