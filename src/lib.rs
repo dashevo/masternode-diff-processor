@@ -26,7 +26,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::time::Instant;
 use byte::*;
-use hashes::hex::ToHex;
 use ffi::wrapped_types;
 use crate::common::block_data::BlockData;
 use crate::common::llmq_type::LLMQType;
@@ -68,11 +67,15 @@ pub extern "C" fn mndiff_process(
     println!("mndiff_process: {:?}", t0);
     let message: &[u8] = unsafe { slice::from_raw_parts(message_arr, message_length as usize) };
     let merkle_root_bytes = unsafe { slice::from_raw_parts(merkle_root, 32) };
+    let t1 = Instant::now();
+    println!("mndiff_process.decode messages: {:?}", t1.duration_since(t0));
     let base_masternode_list = if !base_masternode_list.is_null() {
         unsafe { Some((*base_masternode_list).decode()) }
     } else {
         None
     };
+    let t2 = Instant::now();
+    println!("mndiff_process.decode base_masternode_list: {:?}", t2.duration_since(t1));
     let desired_merkle_root = match merkle_root_bytes.read_with::<UInt256>(&mut 0, LE) {
         Ok(data) => data,
         Err(_err) => { return failure(); }
@@ -114,8 +117,6 @@ pub extern "C" fn mndiff_process(
     let coinbase_transaction = CoinbaseTransaction::new(&message[*offset..]);
     if coinbase_transaction.is_none() { return failure(); }
     let coinbase_transaction = coinbase_transaction.unwrap();
-    let _block_hash_hex = block_hash.0.to_hex();
-    let _coinbase_tx_hash = coinbase_transaction.base.tx_hash.unwrap().0.to_hex();
 
     *offset += coinbase_transaction.base.payload_offset;
     if message_length - *offset < 1 { return failure(); }
@@ -185,6 +186,8 @@ pub extern "C" fn mndiff_process(
             acc
         });
 
+    let t3 = Instant::now();
+    println!("mndiff_process.read before quorums: {:?}", t3.duration_since(t2));
     let mut deleted_quorums: HashMap<LLMQType, Vec<UInt256>> = HashMap::new();
     let mut added_quorums: HashMap<LLMQType, HashMap<UInt256, QuorumEntry>> = HashMap::new();
 
@@ -192,6 +195,7 @@ pub extern "C" fn mndiff_process(
     let mut has_valid_quorums = true;
     let mut needed_masternode_lists: Vec<*mut [u8; 32]> = Vec::new();
 
+    let t4 = Instant::now();
     if quorums_active {
         // deleted quorums
         if message_length - *offset < 1 { return failure(); }
@@ -293,7 +297,8 @@ pub extern "C" fn mndiff_process(
         }
         println!("mndiff_process.process_added_quorums: {:?}", Instant::now().duration_since(t_aqp));
     }
-
+    let t5 = Instant::now();
+    println!("mndiff_process.process quorums: {:?}", t5.duration_since(t4));
     let mut masternodes = if has_old {
         let mut old_mnodes = old_masternodes.clone();
         for hash in deleted_masternode_hashes {
@@ -454,7 +459,8 @@ pub extern "C" fn mndiff_process(
         needed_masternode_lists,
         needed_masternode_lists_count
     };
-    println!("mndiff_process.end: {:?}", Instant::now().duration_since(t0));
+    let t_end = Instant::now();
+    println!("mndiff_process.end: {:?} {:?}", t_end, t_end.duration_since(t0));
     boxed(result)
 }
 
