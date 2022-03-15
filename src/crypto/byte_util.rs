@@ -134,10 +134,8 @@ pub fn merkle_root_from_hashes(hashes: Vec<UInt256>) -> Option<UInt256> {
             higher_level.push(UInt256(sha256d_buffer));
         }
         let t_w1 = Instant::now();
-        println!("mndiff_process. merkle_root_from_hashes.while.0: {:?}", t_w1.duration_since(t_w0));
         level = higher_level; // TODO: sometimes it's very expensive op (may take 1-2sec)
         let t_w2 = Instant::now();
-        println!("mndiff_process. merkle_root_from_hashes.while.1: {:?}", t_w2.duration_since(t_w1));
         // higher_level.clear();
     }
     let tf = Instant::now();

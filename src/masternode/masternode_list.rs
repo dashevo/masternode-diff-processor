@@ -115,14 +115,18 @@ impl<'a> MasternodeList<'a> {
             println!("Block height lookup queried an unknown block {:?}", self.block_hash);
             None
         } else {
+            let t1 = Instant::now();
             let mut pro_tx_hashes: Vec<UInt256> = self.masternodes.clone().into_keys().collect();
+            let t2 = Instant::now();
             pro_tx_hashes
                 .sort_by(|&h1, &h2|
                     h1.clone()
                         .reversed()
                         .cmp(&h2.clone()
                             .reversed()));
+            let t3 = Instant::now();
             let mns = self.masternodes.clone();
+            let t4 = Instant::now();
             let entry_hashes = pro_tx_hashes
                 .clone()
                 .into_iter()
@@ -134,7 +138,14 @@ impl<'a> MasternodeList<'a> {
                     entry_hash
                 })
                 .collect();
-            println!("mndiff_process. hashes_for_merkle_root: {:?}", Instant::now().duration_since(t0));
+            let t5 = Instant::now();
+            println!("mndiff_process. hashes_for_merkle_root: clone nodes: {:?}, sort hashes: {:?}, clone again: {:?}, map hashes: {:?}, total: {:?}",
+                     t2.duration_since(t1),
+                     t3.duration_since(t2),
+                     t4.duration_since(t3),
+                     t5.duration_since(t4),
+                     t5.duration_since(t0)
+            );
             Some(entry_hashes)
         }
     }
