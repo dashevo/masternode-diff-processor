@@ -66,44 +66,6 @@ pub fn data_at_offset_from<'a>(buffer: &'a [u8], offset: &mut usize) -> Result<&
     Ok(data)
 }
 
-/*#[inline]
-pub fn merkle_root_from_hashes(hashes: Vec<UInt256>) -> Option<UInt256> {
-    let length = hashes.len();
-    let t0 = Instant::now();
-    let mut level = hashes.clone();
-    let t1 = Instant::now();
-    println!("mndiff_process. merkle_root_from_hashes.0: {:?}", t1.duration_since(t0));
-    if length == 0 { return None; }
-    if length == 1 { return Some(hashes[0]); }
-    let mut higher_level: Vec<UInt256> = vec![];
-    while level.len() != 1 {
-        let t_w0 = Instant::now();
-        for i in (0..level.len()).step_by(2) {
-            let offset = &mut 0;
-            let mut buffer: Vec<u8> = Vec::with_capacity(64);
-            let left = level[i];
-            *offset += left.consensus_encode(&mut buffer).unwrap();
-            *offset +=
-                if level.len() - i > 1 {
-                    level[i+1]
-                } else {
-                    left
-                }.consensus_encode(&mut buffer).unwrap();
-            let sha256d_buffer = sha256d::Hash::hash(&buffer).into_inner();
-            higher_level.push(UInt256(sha256d_buffer));
-        }
-        let t_w1 = Instant::now();
-        println!("mndiff_process. merkle_root_from_hashes.while.0: {:?}", t_w1.duration_since(t_w0));
-        level = higher_level.clone(); // TODO: sometimes it's very expensive op (may take 1-2sec)
-        let t_w2 = Instant::now();
-        println!("mndiff_process. merkle_root_from_hashes.while.1: {:?}", t_w2.duration_since(t_w1));
-        higher_level.clear();
-    }
-    let tf = Instant::now();
-    println!("mndiff_process. merkle_root_from_hashes.end: {:?}", tf.duration_since(t1));
-    return Some(level[0]);
-}*/
-
 #[inline]
 pub fn merkle_root_from_hashes(hashes: Vec<UInt256>) -> Option<UInt256> {
     let length = hashes.len();
