@@ -127,13 +127,15 @@ impl<'a> MasternodeList<'a> {
             let t3 = Instant::now();
             let mns = self.masternodes.clone();
             let t4 = Instant::now();
+
             let entry_hashes = pro_tx_hashes
                 .clone()
                 .into_iter()
                 .map(|hash| {
                     let h = hash.clone();
-                    let map = mns.clone();
-                    let mn = &map[&h];
+                    // let map = mns.clone();
+                    // let m = mns[&h];
+                    let mn = &mns[&h];
                     let entry_hash = mn.masternode_entry_hash_at(block_height);
                     entry_hash
                 })
