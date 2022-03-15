@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::collections::{BTreeMap, HashMap};
+use std::time::Instant;
 use crate::common::llmq_type::LLMQType;
 use crate::consensus::Encodable;
 use crate::crypto::byte_util::{merkle_root_from_hashes, Reversable, UInt256};
@@ -48,11 +49,15 @@ impl<'a> MasternodeList<'a> {
             masternodes,
         };
         if let Some(hashes) = list.hashes_for_merkle_root(block_height) {
+            let t0 = Instant::now();
             list.masternode_merkle_root = merkle_root_from_hashes(hashes);
+            println!("mndiff_process. masternode_merkle_root: {:?}", Instant::now().duration_since(t0));
         }
         if quorums_active {
             let hashes = list.hashes_for_quorum_merkle_root();
+            let t0 = Instant::now();
             list.quorum_merkle_root = merkle_root_from_hashes(hashes);
+            println!("mndiff_process. quorum_merkle_root: {:?}", Instant::now().duration_since(t0));
         }
         list
     }
@@ -105,6 +110,7 @@ impl<'a> MasternodeList<'a> {
     }
 
     pub fn hashes_for_merkle_root(&self, block_height: u32) -> Option<Vec<UInt256>> {
+        let t0 = Instant::now();
         if block_height == u32::MAX {
             println!("Block height lookup queried an unknown block {:?}", self.block_hash);
             None
@@ -128,11 +134,13 @@ impl<'a> MasternodeList<'a> {
                     entry_hash
                 })
                 .collect();
+            println!("mndiff_process. hashes_for_merkle_root: {:?}", Instant::now().duration_since(t0));
             Some(entry_hashes)
         }
     }
 
     fn hashes_for_quorum_merkle_root(&self) -> Vec<UInt256> {
+        let t0 = Instant::now();
         let mut llmq_commitment_hashes: Vec<UInt256> = self.quorums
             .clone()
             .into_values()
@@ -145,6 +153,7 @@ impl<'a> MasternodeList<'a> {
                 acc
             });
         llmq_commitment_hashes.sort();
+        println!("mndiff_process. hashes_for_quorum_merkle_root: {:?}", Instant::now().duration_since(t0));
         llmq_commitment_hashes
     }
 
