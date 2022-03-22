@@ -4,7 +4,6 @@ use crate::common::llmq_type::LLMQType;
 use crate::consensus::Encodable;
 use crate::crypto::byte_util::{merkle_root_from_hashes, Reversable, UInt256};
 use crate::hashes::{Hash, sha256};
-use crate::Zeroable;
 use crate::masternode::quorum_entry::QuorumEntry;
 use crate::masternode::masternode_entry::MasternodeEntry;
 use crate::Zeroable;
