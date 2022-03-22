@@ -25,7 +25,6 @@ use std::slice;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use byte::*;
-use hashes::hex::ToHex;
 use ffi::wrapped_types;
 use crate::common::block_data::BlockData;
 use crate::common::llmq_type::LLMQType;
@@ -111,8 +110,6 @@ pub extern "C" fn mndiff_process(
     let coinbase_transaction = CoinbaseTransaction::new(&message[*offset..]);
     if coinbase_transaction.is_none() { return failure(); }
     let coinbase_transaction = coinbase_transaction.unwrap();
-    let _block_hash_hex = block_hash.0.to_hex();
-    let _coinbase_tx_hash = coinbase_transaction.base.tx_hash.unwrap().0.to_hex();
 
     *offset += coinbase_transaction.base.payload_offset;
     if message_length - *offset < 1 { return failure(); }

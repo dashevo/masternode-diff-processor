@@ -65,17 +65,20 @@ pub fn data_at_offset_from<'a>(buffer: &'a [u8], offset: &mut usize) -> Result<&
     Ok(data)
 }
 
+#[inline]
 pub fn merkle_root_from_hashes(hashes: Vec<UInt256>) -> Option<UInt256> {
     let length = hashes.len();
     let mut level = hashes.clone();
     if length == 0 { return None; }
     if length == 1 { return Some(hashes[0]); }
-    let mut higher_level: Vec<UInt256> = vec![];
     while level.len() != 1 {
-        for i in (0..level.len()).step_by(2) {
-            let left = level[i];
+        let len = level.len();
+        let capacity = (0.5 * len as f64).round();
+        let mut higher_level: Vec<UInt256> = Vec::with_capacity(capacity as usize);
+        for i in (0..len).step_by(2) {
             let offset = &mut 0;
             let mut buffer: Vec<u8> = Vec::with_capacity(64);
+            let left = level[i];
             *offset += left.consensus_encode(&mut buffer).unwrap();
             *offset +=
                 if level.len() - i > 1 {
@@ -86,8 +89,7 @@ pub fn merkle_root_from_hashes(hashes: Vec<UInt256>) -> Option<UInt256> {
 
             higher_level.push(UInt256(sha256d::Hash::hash(&buffer).into_inner()));
         }
-        level = higher_level.clone();
-        higher_level.clear();
+        level = higher_level;
     }
     return Some(level[0]);
 }

@@ -7,6 +7,7 @@ use crate::hashes::{Hash, sha256};
 use crate::Zeroable;
 use crate::masternode::quorum_entry::QuorumEntry;
 use crate::masternode::masternode_entry::MasternodeEntry;
+use crate::Zeroable;
 
 #[derive(Clone)]
 pub struct MasternodeList<'a> {
@@ -123,8 +124,7 @@ impl<'a> MasternodeList<'a> {
                 .into_iter()
                 .map(|hash| {
                     let h = hash.clone();
-                    let map = mns.clone();
-                    let mn = &map[&h];
+                    let mn = &mns[&h];
                     let entry_hash = mn.masternode_entry_hash_at(block_height);
                     entry_hash
                 })
