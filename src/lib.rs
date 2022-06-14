@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 #[macro_use]
 pub mod processing;
-pub mod store;
+// pub mod store;
 
 #[cfg(test)]
 mod lib_tests;

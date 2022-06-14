@@ -161,14 +161,16 @@ pub fn classify_quorums<'a,
     ) {
     let has_valid_quorums = true;
     let mut needed_masternode_lists: Vec<*mut [u8; 32]> = Vec::new();
-    added_quorums.iter()
+
+    added_quorums
+        .iter()
         .for_each(|(&llmq_type, llmqs_of_type)| {
             if (manager.should_process_llmq_of_type)(llmq_type) {
-                (*llmqs_of_type).iter().for_each(|(&llmq_hash, &quorum)| {
+                (*llmqs_of_type).iter().for_each(|(&llmq_hash, quorum)| {
                     match lookup_masternode_list(llmq_hash, manager.masternode_list_lookup, manager.masternode_list_destroy) {
                         Some(llmq_masternode_list) =>
                             validate_quorum(
-                                quorum,
+                                quorum.clone(),
                                 has_valid_quorums,
                                 llmq_masternode_list,
                                 manager.block_height_lookup,
@@ -186,7 +188,7 @@ pub fn classify_quorums<'a,
                     }
                 });
             }
-        });
+    });
     let mut quorums = base_quorums.clone();
     quorums.extend(added_quorums
         .clone()
