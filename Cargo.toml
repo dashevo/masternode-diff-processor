@@ -26,8 +26,8 @@ path = "../dash-spv-ffi"
 #branch = "master"
 #version = "^0.1"
 
-#[dependencies.dash-spv-storage]
-#path = "../dash-spv-storage"
+[dependencies.dash-spv-storage]
+path = "../dash-spv-storage"
 
 [build-dependencies]
 cbindgen = "0.20.0"

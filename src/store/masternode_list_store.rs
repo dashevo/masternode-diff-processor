@@ -1,34 +1,95 @@
 use std::cmp::{max, min};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use dash_spv_models::common::{BlockData, ChainType, LLMQType, SocketAddress};
-use dash_spv_models::common::ChainType::MainNet;
 use dash_spv_models::masternode::{LLMQEntry, MasternodeEntry, MasternodeList};
 use dash_spv_primitives::crypto::byte_util::{Reversable, Zeroable};
-use dash_spv_primitives::crypto::{UInt128, UInt256};
+use dash_spv_primitives::crypto::UInt256;
 use dash_spv_storage::models::chain::merkle_block::MerkleBlock;
 use dash_spv_storage::models::masternode::Masternode;
-use dash_spv_storage::models::masternode::masternode::{delete_masternodes, delete_masternodes_with_empty_lists};
+use dash_spv_storage::models::masternode::masternode::{delete_masternodes, delete_masternodes_with_empty_lists, save_plaform_ping_info};
 use dash_spv_storage::models::masternode::masternode_list::{delete_masternode_list, delete_masternode_lists, masternode_list_for_block, masternode_lists_for_chain, masternode_lists_in};
 use dash_spv_storage::models::masternode::quorum::{delete_quorums, delete_quorums_since_height, quorums_since_height};
 
 
 pub const CHAINLOCK_ACTIVATION_HEIGHT: u32 = 1088640;
 
-pub struct ChainContext<BL>
+pub struct ChainContext<BL, BHL, GLTBH>
     where
-        BL: Fn(i32) -> Option<BlockData>,
-        BHL: Fn(u32) -> Option<BlockData>,
-        GLTBH: Fn() -> Option<BlockData>,
+        BL: Fn(i32) -> Option<BlockData> + Copy,
+        BHL: Fn(u32) -> Option<BlockData> + Copy,
+        GLTBH: Fn() -> Option<BlockData> + Copy,
 {
     pub r#type: ChainType,
     pub chain_id: i32,
     pub block_lookup: BL,
-    pub block_height_lookup: BL,
+    pub block_height_lookup: BHL,
     pub get_last_terminal_block: GLTBH,
 }
 
-pub struct MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
-    pub context: ChainContext<BL>,
+impl<BL, BHL, GLTBH> ChainContext<BL, BHL, GLTBH>
+    where
+        BL: Fn(i32) -> Option<BlockData> + Copy,
+        BHL: Fn(u32) -> Option<BlockData> + Copy,
+        GLTBH: Fn() -> Option<BlockData> + Copy {
+
+    pub fn is_mainnet(&self) -> bool {
+        self.r#type.is_mainnet()
+    }
+
+    pub fn get_estimated_block_height(&self) -> u32 {
+        0
+    }
+    pub fn get_last_terminal_block_height(&self) -> u32 {
+        0
+    }
+
+    pub fn get_block_at_height_or_last_terminal(&self, block_height: u32) -> Option<BlockData> {
+        None
+    }
+
+    pub fn get_block_by_stored_id(&self, block_id: i32) -> Option<BlockData> {
+        //let block = self.block_lookup(block_id);
+        None
+    }
+
+    pub fn get_height_for_block_hash(&self, block_hash: UInt256) -> u32 {
+        //block_height_lookup(masternode_list.block_hash)
+
+        0
+    }
+    pub fn get_quorum_type_for_platform(&self) -> LLMQType {
+        match self.r#type {
+            ChainType::MainNet => LLMQType::Llmqtype100_67,
+            ChainType::TestNet => LLMQType::Llmqtype100_67,
+            ChainType::DevNet => LLMQType::Llmqtype10_60
+        }
+    }
+
+    pub fn get_quorum_type_for_chain_locks(&self) -> LLMQType {
+        //DSLLMQType quorumType = self.chain.quorumTypeForChainLocks;
+        match self.r#type {
+            ChainType::MainNet => LLMQType::Llmqtype400_60,
+            ChainType::TestNet => LLMQType::Llmqtype50_60,
+            ChainType::DevNet => LLMQType::Llmqtype10_60
+        }
+    }
+
+    pub fn get_quorum_type_for_is_locks(&self) -> LLMQType {
+        //DSLLMQType quorumType = self.chain.quorumTypeForISLocks;
+        match self.r#type {
+            ChainType::MainNet => LLMQType::Llmqtype50_60,
+            ChainType::TestNet => LLMQType::Llmqtype50_60,
+            ChainType::DevNet => LLMQType::Llmqtype10_60
+        }
+    }
+}
+
+pub struct MasternodeListStore<'a, BL, BHL, GLTBH>
+    where
+        BL: Fn(i32) -> Option<BlockData> + Copy,
+        BHL: Fn(u32) -> Option<BlockData> + Copy,
+        GLTBH: Fn() -> Option<BlockData> + Copy {
+    pub context: ChainContext<BL, BHL, GLTBH>,
     pub current_masternode_list: Option<MasternodeList>,
     pub masternode_list_awaiting_quorum_validation: Option<MasternodeList>,
     pub recent_masternode_lists: Vec<Masternode<'a>>,
@@ -43,9 +104,12 @@ pub struct MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
 
 }
 
-impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
-
-    pub fn new(context: ChainContext<BL>) -> MasternodeListStore<'a, BL> {
+impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
+    where
+        BL: Fn(i32) -> Option<BlockData> + Copy,
+        BHL: Fn(u32) -> Option<BlockData> + Copy,
+        GLTBH: Fn() -> Option<BlockData> + Copy {
+    pub fn new(context: ChainContext<BL, BHL, GLTBH>) -> MasternodeListStore<'a, BL, BHL, GLTBH> {
         MasternodeListStore {
             context,
             current_masternode_list: None,
@@ -67,6 +131,22 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
         self.load_local_masternodes();
     }
 
+    pub fn save_platform_ping_info_for_entries(&self, entries: Vec<MasternodeEntry>) {
+        // [context performBlockAndWait:^{
+        //     for (DSSimplifiedMasternodeEntry *entry in entries) {
+        //         [entry savePlatformPingInfoInContext:context];
+        //     }
+        //     NSError *savingError = nil;
+        //     [context save:&savingError];
+        // }];
+
+        entries.iter().for_each(|&entry| {
+            save_plaform_ping_info(self.context.chain_id, entry.provider_registration_transaction_hash, entry.)
+        });
+    }
+
+
+
     pub fn height_for_block_hash(&mut self, block_hash: UInt256) -> u32 {
         if block_hash.is_zero() {
             return 0;
@@ -84,11 +164,11 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
 
     pub fn earliest_masternode_list_block_height(&mut self) -> u32 {
         let mut earliest = u32::MAX;
-        self.block_hash_stubs.iter().for_each(|hash| {
-            earliest = min(earliest, self.height_for_block_hash(*hash));
+        self.block_hash_stubs.iter().for_each(|&hash| {
+            earliest = min(earliest, self.height_for_block_hash(hash));
         });
-        self.by_block_hash.iter().for_each(|(hash)| {
-            earliest = min(earliest, self.height_for_block_hash(*hash));
+        self.by_block_hash.keys().for_each(|&hash| {
+            earliest = min(earliest, self.height_for_block_hash(hash));
         });
         earliest
     }
@@ -101,26 +181,22 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
 
     pub fn last_masternode_list_block_height(&mut self) -> u32 {
         let mut last = 0u32;
-        self.block_hash_stubs.iter().for_each(|hash| {
-            last = max(last, self.height_for_block_hash(*hash));
+        self.block_hash_stubs.iter().for_each(|&hash| {
+            last = max(last, self.height_for_block_hash(hash));
         });
-        self.by_block_hash.iter().for_each(|(hash)| {
-            last = max(last, self.height_for_block_hash(*hash));
+        self.by_block_hash.keys().for_each(|&hash| {
+            last = max(last, self.height_for_block_hash(hash));
         });
         if last > 0 { last } else { u32::MAX }
     }
 
     pub fn recent_masternode_lists(&self) -> Vec<MasternodeList> {
-        let values = self.by_block_hash.values().collect::<Vec<MasternodeList>>();
+        let values = self.by_block_hash.values().collect();
         // values.sort_by()
-       // return [[self.masternodeListsByBlockHash allValues]
+        // return [[self.masternodeListsByBlockHash allValues]
         // sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"height" ascending:YES]]];
 
-        //values.sort_by()
-
-        // self.by_block_hash
-
-        //self.by_block_hash
+        values
     }
 
     pub fn delete_all_on_chain(&self, chain_id: i32) {
@@ -132,7 +208,6 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
     pub fn delete_empty_masternode_lists(&self, chain_id: i32) {
 
         //let _ = delete_masternodes()
-
     }
 
     pub fn has_blocks_with_hash(&self, block_hash: UInt256) -> bool {
@@ -155,8 +230,8 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
         if last == u32::MAX {
             32
         } else {
-            let diff = self.chain.estimatedBlockHeight - last;
-            if diff  < 0 {
+            let diff = self.context.get_estimated_block_height() - last;
+            if diff < 0 {
                 32
             } else {
                 min(32, unsafe { ceilf32(diff / 24) } as u32)
@@ -166,46 +241,46 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
 
     pub fn masternode_lists_and_quorums_is_synced(&mut self) -> bool {
         let last = self.last_masternode_list_block_height();
-        if last == u32::MAX || last  < self.chain.estimatedBlockHeight - 16 {
+        if last == u32::MAX || last < self.context.get_estimated_block_height() - 16 {
             false
         } else {
             true
         }
     }
 
-    pub fn load_local_masternodes(&self) {
 
+    pub fn height_for_masternode_list(&self, masternode_list: &MasternodeList) -> u32 {
+        if masternode_list.known_height == 0 || masternode_list.known_height == u32::MAX {
+            self.context.get_height_for_block_hash(masternode_list.block_hash)
+        } else {
+            masternode_list.known_height
+        }
     }
 
-    pub fn load_masternode_list_at_block_hash<BHL>(&mut self, block_hash: UInt256, block_height_lookup: BHL) -> Option<MasternodeList>
+    pub fn load_local_masternodes(&self) {}
+
+    pub fn load_masternode_list_at_block_hash(&mut self, block_hash: UInt256, block_height_lookup: Option<BHL>) -> Option<MasternodeList>
         where BHL: Fn(UInt256) -> u32 + Copy {
-        /// TODO: callback to ffi DB or change to block_hash or use full DB here
+        // TODO: callback to ffi DB or change to block_hash or use full DB here
         let block_id = 0;
         match masternode_list_for_block(self.context.chain_id, block_id) {
             Ok(entity_list) => {
                 let list = entity_list.masternode_list_with_simplified_masternode_entry_pool_and_lookup(BTreeMap::new(), HashMap::new(), block_height_lookup);
                 self.by_block_hash.insert(block_hash, list.clone());
                 self.block_hash_stubs.remove(&block_hash);
-                let height = if list.known_height == 0 || list.known_height == u32::MAX {
-                    block_height_lookup(list.block_hash)
-                } else {
-                    list.known_height
-                };
-                println!("Loading Masternode List at height {} for blockHash {} with {} entries", height, block_hash, list.masternodes.len());
-
+                println!("Loading Masternode List at height {} for blockHash {} with {} entries", self.height_for_masternode_list(&list), block_hash, list.masternodes.len());
                 Some(list)
             },
             Err(err) => None
         }
     }
 
-    pub fn load_masternode_lists_with_block_height_lookup<BHL>(&mut self, block_height_lookup: BHL)
-        where BHL: Fn(UInt256) -> u32 + Copy {
+    pub fn load_masternode_lists_with_block_height_lookup(&mut self, block_height_lookup: BHL) {
 
         // TODO: need data indexed by block height (ASC)
         match masternode_lists_for_chain(self.context.chain_id) {
             Ok(entities) => {
-                let needed_masternode_list_height = self.chain.lastTerminalBlockHeight - 23; //2*8+7
+                let mut needed_masternode_list_height = self.context.get_last_terminal_block_height() - 23; //2*8+7
                 let count = entities.len();
                 let mut simplified_masternode_entry_pool: BTreeMap<UInt256, MasternodeEntry> = BTreeMap::new();
                 let mut quorum_entry_pool: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>> = HashMap::new();
@@ -223,11 +298,7 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
                         self.by_block_hash.insert(masternode_list.block_hash, masternode_list.clone());
                         simplified_masternode_entry_pool.extend(masternode_list.masternodes);
                         quorum_entry_pool.extend(masternode_list.quorums);
-                        let height = if masternode_list.known_height == 0 || masternode_list.known_height == u32::MAX {
-                            block_height_lookup(masternode_list.block_hash)
-                        } else {
-                            masternode_list.known_height
-                        };
+                        let height = self.height_for_masternode_list(&masternode_list);
                         println!("Loading Masternode List at height {} for blockHash {} with {} entries", height, masternode_list.block_hash, masternode_list.masternodes.len());
                         if is_last {
                             self.masternode_list_awaiting_quorum_validation = Some(masternode_list.clone());
@@ -244,14 +315,13 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
         }
     }
 
-    pub fn reload_masternode_lists_with_block_height_lookup<BHL>(&mut self, block_height_lookup: BHL)
-        where BHL: Fn(UInt256) -> u32 + Copy {
+    pub fn reload_masternode_lists_with_block_height_lookup(&mut self, block_height_lookup: Option<BHL>) {
         self.remove_all_masternode_lists();
         self.masternode_list_awaiting_quorum_validation = None;
-        self.load_masternode_lists_with_block_height_lookup(block_height_lookup);
+        self.load_masternode_lists_with_block_height_lookup(block_height_lookup.unwrap());
     }
 
-    pub fn masternode_list_before_block_hash(&mut self, block_hash: UInt256) -> Option<MasternodeList> {
+    pub fn masternode_list_before_block_hash(&mut self, block_hash: UInt256) -> Option<&MasternodeList> {
         let mut min_distance = u32::MAX;
         let block_height = self.height_for_block_hash(block_hash);
         let mut closest_masternode_list = None;
@@ -259,7 +329,6 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
             let masternode_list_block_height = self.height_for_block_hash(key);
 
             if block_height > masternode_list_block_height {
-
                 let distance = block_height - masternode_list_block_height;
                 if distance < min_distance {
                     min_distance = distance;
@@ -268,32 +337,26 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
             }
         });
         if let Some(list) = closest_masternode_list {
-            let height = if list.known_height == 0 || list.known_height == u32::MAX {
-                block_height_lookup(list.block_hash)
-            } else {
-                list.known_height
-            };
-            if self.context.r#type == ChainType::MainNet && height < CHAINLOCK_ACTIVATION_HEIGHT && block_height >= CHAINLOCK_ACTIVATION_HEIGHT {
+            let height = self.height_for_masternode_list(list);
+            if self.context.is_mainnet() && height < CHAINLOCK_ACTIVATION_HEIGHT && block_height >= CHAINLOCK_ACTIVATION_HEIGHT {
                 // special mainnet case
                 return None;
             }
-
         }
-
         closest_masternode_list
     }
 
-    pub fn masternode_list_for_block_hash<BHL>(&mut self, mut block_hash: UInt256, block_height_lookup: BHL) -> Option<MasternodeList>
-        where BHL: Fn(UInt256) -> u32 + Copy {
+    pub fn masternode_list_for_block_hash(&mut self, mut block_hash: UInt256, block_height_lookup: Option<BHL>) -> Option<&MasternodeList> {
         if let Some(list) = self.by_block_hash.get(&block_hash) {
-            return Some(list.clone())
+            return Some(list)
         }
         if self.block_hash_stubs.contains(&block_hash) {
             if let Some(list) = self.load_masternode_list_at_block_hash(block_hash, block_height_lookup) {
-                return Some(list.clone())
+                return Some(&list)
             }
         }
-        println!("No masternode list at {} {}", block_hash, block_height_lookup(block_hash));
+
+        println!("No masternode list at {} {}", block_hash, self.context.get_height_for_block_hash(block_hash));
         None
     }
 
@@ -301,30 +364,30 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
         self.by_block_hash.clear();
         self.block_hash_stubs.clear();
         self.masternode_list_awaiting_quorum_validation = None;
-        self.masternode_list_awaiting_quorum_validation = None;
     }
 
     pub fn remove_old_masternode_lists(&mut self) {
         match self.current_masternode_list {
             Some(current_masternode_list) => {
                 let chain_id = self.context.chain_id;
-                let last_block_height = current_masternode_list.height;
+                let last_block_height = self.height_for_masternode_list(&current_masternode_list);
                 let mut masternode_list_block_hashes = self.by_block_hash.keys().copied().collect::<BTreeSet<UInt256>>();
                 masternode_list_block_hashes.extend(self.block_hash_stubs.clone());
+
                 if let Ok(entities) = masternode_lists_in(chain_id, masternode_list_block_hashes) {
                     //[DSMasternodeListEntity objectsInContext:self.managedObjectContext matching:@"block.height < %@ && block.blockHash IN %@ && (block.usedByQuorums.@count == 0)", @(last_block_height - 50), masternode_list_block_hashes];
                     let removed_items = entities.len() > 0;
 
                     entities.iter().for_each(|&entity| {
                         let block_id = entity.block_id;
-                        let block = self.context.block_lookup(block_id);
+                        let block = self.context.get_block_by_stored_id(block_id).unwrap();
                         println!("Removing masternodeList at height: {} where quorums are: %@", block.height, block.usedByQuorums);
                         // A quorum is on a block that can only have one masternode list.
                         // A block can have one quorum of each type.
                         // A quorum references the masternode list by it's block
                         // we need to check if this masternode list is being referenced by a quorum using the inverse of quorum.block.masternodeList
                         let _ = delete_masternode_list(chain_id, block_id);
-                        self.by_block_hash.remove(block.hash);
+                        self.by_block_hash.remove(&block.hash);
                     });
                     if removed_items {
                         // Now we should delete old quorums
@@ -342,8 +405,7 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
                             },
                             Err(_err) => old_time
                         };
-                        _ = delete_quorums_since_height(self.context.chain_id, oldest_block_height);
-
+                        let _ = delete_quorums_since_height(self.context.chain_id, oldest_block_height);
                     }
                 }
             }
@@ -363,59 +425,74 @@ impl<'a, BL> MasternodeListStore<'a, BL> where BL: Fn(i32) -> BlockData + Copy {
     pub fn masternode_entry_for_location(&self, address: SocketAddress) -> Option<&MasternodeEntry> {
         self.current_masternode_list?.masternodes.values().filter(|&entry| entry.socket_address.eq(&address)).last()
     }
-    pub fn quorumEntryForPlatformHavingQuorumHashByBlock(&self, quorum_hash: UInt256, block: BlockData) -> Option<LLMQEntry> {
 
+    pub fn quorum_entry_for_platform_having_quorum_hash(&mut self, quorum_hash: UInt256, block_height: u32) -> Option<&LLMQEntry> {
+        if let Some(block) = self.context.get_block_at_height_or_last_terminal(block_height) {
+            self.quorum_entry_for_platform_having_quorum_hash_by_block(quorum_hash, block)
+        } else {
+            None
+        }
     }
 
-    pub fn quorumEntryForPlatformHavingQuorumHashByHeight(&self, quorum_hash: UInt256, block_height: u32) -> Option<LLMQEntry> {
-        if let Some(block) = self.context.block_height_lookup(block_height) {
-            self.quorumEntryForPlatformHavingQuorumHash(quorum_hash, block)
-        } else if let Some(block) = self.context.get_last_terminal_block() {
-            if block_height > block.height {
-                self.quorumEntryForPlatformHavingQuorumHash(quorum_hash, block)
-
-            } else {
-                return nil;
+    pub fn quorum_entry_for_platform_having_quorum_hash_by_block(&mut self, quorum_hash: UInt256, block: BlockData) -> Option<&LLMQEntry> {
+        match self.masternode_list_for_block_hash(block.hash, None).or(self.masternode_list_before_block_hash(block.hash)) {
+            Some(list) => {
+                if block.height - self.height_for_masternode_list(&list) > 32 {
+                    println!("Masternode list is too old");
+                    return None;
+                }
+                if let Some(entry) = list.quorum_entry_for_platform_with_quorum_hash(quorum_hash, self.context.get_quorum_type_for_platform()) {
+                    Some(entry)
+                } else {
+                    self.quorum_entry_for_platform_having_quorum_hash(quorum_hash, block.height - 1)
+                }
+            },
+            None => {
+                println!("No masternode list found yet");
+                return None;
             }
-
         }
     }
 
-    pub fn quorum_entry_for_chain_lock_requestid(&mut self, request_id: UInt256, merkle_block: MerkleBlock) -> Option<LLMQEntry> {
-        let masternode_list = self.masternode_list_before_block_hash(merkle_block.block_hash);
-    }
-
-
-    - (DSQuorumEntry *_Nullable)quorumEntryForPlatformHavingQuorumHash:(UInt256)quorumHash forBlockHeight:(uint32_t)blockHeight {
-    DSBlock *block = [self.chain blockAtHeight:blockHeight];
-    if (block == nil) {
-    if (blockHeight > self.chain.lastTerminalBlockHeight) {
-    block = self.chain.lastTerminalBlock;
-    } else {
-    return nil;
-    }
-    }
-    return [self quorumEntryForPlatformHavingQuorumHash:quorumHash forBlock:block];
-}
-
-    pub fn quorum_entry_for_chain_lock_requestid(&self, request_id: UInt256, merkle_block: MerkleBlock) -> Option<LLMQEntry> {
-        if let Some(masternode_list) = self.masternode_list_before_block_hash(merkle_block.block_hash) {
-
+    pub fn quorum_entry_for_lock_request_id(&mut self, request_id: UInt256, llmq_type: LLMQType, block: MerkleBlock, expiration_offset: u32) -> Option<&LLMQEntry> {
+        match self.masternode_list_before_block_hash(block.block_hash) {
+            Some(list) => {
+                let height = self.height_for_masternode_list(list);
+                let block_height = block.height as u32;
+                let delta = block_height - height;
+                if delta > expiration_offset {
+                    println!("Masternode list for is too old (age: {} masternodeList height {} merkle block height {})", delta, height, block_height);
+                    None
+                } else {
+                    list.quorum_entry_for_lock_request_id(request_id, llmq_type)
+                }
+            },
+            None => {
+                println!("No masternode list found yet");
+                return None;
+            }
         }
     }
 
-- (DSQuorumEntry *)quorumEntryForChainLockRequestID:(UInt256)requestID forMerkleBlock:(DSMerkleBlock *)merkleBlock {
-DSMasternodeList *masternodeList = [self masternodeListBeforeBlockHash:merkleBlock.blockHash];
-if (!masternodeList) {
-DSLog(@"No masternode list found yet");
-return nil;
-}
-if (merkleBlock.height - masternodeList.height > 24) {
-DSLog(@"Masternode list is too old");
-return nil;
-}
-return [masternodeList quorumEntryForChainLockRequestID:requestID];
-}
+    pub fn quorum_entry_for_chain_lock_request_id(&mut self, request_id: UInt256, block: MerkleBlock) -> Option<&LLMQEntry> {
+        self.quorum_entry_for_lock_request_id(request_id, self.context.get_quorum_type_for_chain_locks(), block, 24)
+    }
+
+    pub fn quorum_entry_for_instant_send_lock_request_id(&mut self, request_id: UInt256, block: MerkleBlock) -> Option<&LLMQEntry> {
+        self.quorum_entry_for_lock_request_id(request_id, self.context.get_quorum_type_for_is_locks(), block, 32)
+    }
+
+    pub fn add_block_to_validation_queue(&mut self, block: MerkleBlock) -> bool {
+        let merkle_block_hash = block.block_hash;
+        println!("add_block_to_validation_queue: {}:{}", block.height, merkle_block_hash);
+        if self.has_masternode_list_at(merkle_block_hash) {
+            println!("Already have that masternode list (or in stub) {}", block.height);
+            return false;
+        }
+        self.last_queried_block_hash = Some(merkle_block_hash);
+        self.queries_needing_quorums_validated.insert(merkle_block_hash);
+        true
+    }
 
 
     pub fn prepare_to_save_masternode_list(&mut self, masternode_list: MasternodeList, added_masternodes: BTreeMap<UInt256, MasternodeEntry>, modified_masternodes: BTreeMap<UInt256, MasternodeEntry>, added_quorums: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>) {
@@ -436,7 +513,7 @@ return [masternodeList quorumEntryForChainLockRequestID:requestID];
         // });
 
         // We will want to create unknown blocks if they came from insight
-        let create_unknown_blocks = self.context.r#type != MainNet;
+        let create_unknown_blocks = !self.context.is_mainnet();
         self.currently_being_saved_count += 1;
         // This will create a queue for masternodes to be saved without blocking the networking queue
 
@@ -460,24 +537,12 @@ return [masternodeList quorumEntryForChainLockRequestID:requestID];
 
     pub fn save_masternode_list(masternode_list: MasternodeList) {
         let mnl_height = masternode_list.height;
-        println!("Queued saving MNL at height %u", mnl_height);
+        println!("Queued saving MNL at height {}", mnl_height);
         let mnl_block_hash = masternode_list.block_hash;
         //masternodes
         //DSChainEntity *chainEntity = [chain chainEntityInContext:context];
 
         let merkle_block_entity = MerkleBlock::merkle_block_with_hash(mnl_block_hash);
-
-        if merkle_block_entity.is_err() {
-
-
-        }
-
-
-        if (!merkle_block_entity && ([chain checkpointForBlockHash:mnlBlockHash])) {
-        DSCheckpoint *checkpoint = [chain checkpointForBlockHash:mnlBlockHash];
-        DSBlock *block = [checkpoint blockForChain:chain];
-        merkleBlockEntity = [[DSMerkleBlockEntity managedObjectInBlockedContext:context] setAttributesFromBlock:block forChainEntity:chainEntity];
-        }
 
     }
 
