@@ -1,14 +1,15 @@
 use std::cmp::{max, min};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
+use chrono::NaiveDateTime;
 use dash_spv_models::common::{BlockData, ChainType, LLMQType, SocketAddress};
 use dash_spv_models::masternode::{LLMQEntry, MasternodeEntry, MasternodeList};
-use dash_spv_primitives::crypto::byte_util::{Reversable, Zeroable};
+use dash_spv_primitives::crypto::byte_util::Zeroable;
 use dash_spv_primitives::crypto::UInt256;
 use dash_spv_storage::models::chain::merkle_block::MerkleBlock;
 use dash_spv_storage::models::masternode::Masternode;
 use dash_spv_storage::models::masternode::masternode::{delete_masternodes, delete_masternodes_with_empty_lists, save_plaform_ping_info};
 use dash_spv_storage::models::masternode::masternode_list::{delete_masternode_list, delete_masternode_lists, masternode_list_for_block, masternode_lists_for_chain, masternode_lists_in};
-use dash_spv_storage::models::masternode::quorum::{delete_quorums, delete_quorums_since_height, quorums_since_height};
+use dash_spv_storage::models::masternode::quorum::{delete_quorums, delete_quorums_since_height};
 
 
 pub const CHAINLOCK_ACTIVATION_HEIGHT: u32 = 1088640;
@@ -131,7 +132,7 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
         self.load_local_masternodes();
     }
 
-    pub fn save_platform_ping_info_for_entries(&self, entries: Vec<MasternodeEntry>) {
+    pub fn save_platform_ping_info_for_entries(&self, entries: Vec<MasternodeEntry>, platform_ping: i64, platform_ping_date: NaiveDateTime) {
         // [context performBlockAndWait:^{
         //     for (DSSimplifiedMasternodeEntry *entry in entries) {
         //         [entry savePlatformPingInfoInContext:context];
@@ -141,7 +142,8 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
         // }];
 
         entries.iter().for_each(|&entry| {
-            save_plaform_ping_info(self.context.chain_id, entry.provider_registration_transaction_hash, entry.)
+            save_plaform_ping_info(self.context.chain_id, entry.provider_registration_transaction_hash, platform_ping, platform_ping_date)
+                .expect("Error saving platform_ping info");
         });
     }
 
@@ -191,11 +193,10 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
     }
 
     pub fn recent_masternode_lists(&self) -> Vec<MasternodeList> {
-        let values = self.by_block_hash.values().collect();
-        // values.sort_by()
-        // return [[self.masternodeListsByBlockHash allValues]
-        // sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"height" ascending:YES]]];
-
+        let mut values = self.by_block_hash.into_values().collect::<Vec<MasternodeList>>();
+        values.sort_by(|&l1, &l2|
+            self.height_for_masternode_list(&l1)
+                .cmp(&self.height_for_masternode_list(&l2)));
         values
     }
 
@@ -234,7 +235,7 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
             if diff < 0 {
                 32
             } else {
-                min(32, unsafe { ceilf32(diff / 24) } as u32)
+                min(32, ((diff / 24) as f64).ceil() as u32)
             }
         }
     }
@@ -265,7 +266,7 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
         let block_id = 0;
         match masternode_list_for_block(self.context.chain_id, block_id) {
             Ok(entity_list) => {
-                let list = entity_list.masternode_list_with_simplified_masternode_entry_pool_and_lookup(BTreeMap::new(), HashMap::new(), block_height_lookup);
+                let list = entity_list.masternode_list_with_simplified_masternode_entry_pool_and_lookup(BTreeMap::new(), BTreeMap::new(), block_height_lookup);
                 self.by_block_hash.insert(block_hash, list.clone());
                 self.block_hash_stubs.remove(&block_hash);
                 println!("Loading Masternode List at height {} for blockHash {} with {} entries", self.height_for_masternode_list(&list), block_hash, list.masternodes.len());
@@ -283,7 +284,7 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
                 let mut needed_masternode_list_height = self.context.get_last_terminal_block_height() - 23; //2*8+7
                 let count = entities.len();
                 let mut simplified_masternode_entry_pool: BTreeMap<UInt256, MasternodeEntry> = BTreeMap::new();
-                let mut quorum_entry_pool: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>> = HashMap::new();
+                let mut quorum_entry_pool: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>> = BTreeMap::new();
                 entities.iter().rev().enumerate().for_each(|(i, &entity)| {
                     // either last one or there are less than 3 (we aim for 3)
                     // TODO: need to fetch block_height and hash by entity.block_id
@@ -495,7 +496,7 @@ impl<'a, BL, BHL, GLTBH> MasternodeListStore<'a, BL, BHL, GLTBH>
     }
 
 
-    pub fn prepare_to_save_masternode_list(&mut self, masternode_list: MasternodeList, added_masternodes: BTreeMap<UInt256, MasternodeEntry>, modified_masternodes: BTreeMap<UInt256, MasternodeEntry>, added_quorums: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>) {
+    pub fn prepare_to_save_masternode_list(&mut self, masternode_list: MasternodeList, added_masternodes: BTreeMap<UInt256, MasternodeEntry>, modified_masternodes: BTreeMap<UInt256, MasternodeEntry>, added_quorums: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>) {
         let block_hash = masternode_list.block_hash;
         if self.has_masternode_list_at(block_hash) {
             // in rare race conditions this might already exist
