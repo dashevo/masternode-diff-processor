@@ -108,3 +108,42 @@ fn test_llmq_rotation_3() {
         context,
     );
 }
+
+
+unsafe extern "C" fn block_height_lookup_333(block_hash: *mut [u8; 32], _context: *const std::ffi::c_void) -> u32 {
+    //let bh = block_height_for(chain, masternode_list.block_hash.reversed().to_string().as_str());
+    let mut h = UInt256(*(block_hash));
+    let orig_s = h.clone().to_string();
+    let rev = h.reversed();
+    let rev_s = rev.to_string();
+    match rev_s.as_str() {
+        "00000072f3c73d891d86546f259ba2cd87d1aa655c447640a4257f6a8e6f7018" => 5334,
+        "000000a451ba6459b3ce6128a5e8f273f9bc2010645dd4721e1b51efce18dda7" => 4207,
+        "000000076aeba26f76a5d0e12e11c9b4d35d7232f1bbae6c47b4d8bef4a12b62" => 4192,
+        "00000179987c39850ddd901eec6bfd0a508ec54fb6a0cd28481481aa0adf56b6" => 4168,
+        "00000028bd64fd360dba79acf7cb3bae6cea18553c7232894a2ace15ada70940" => 4144,
+        "000002410622902b361d1e2194f2072c6409c6f22ef5fea854d3326a27075713" => 4120,
+        "000001f340d35fe89d1924de57ccbf63a7a09347835e6e4990ee2df12a4a67f9" => 4096,
+        _ => u32::MAX
+    }
+}
+
+#[test]
+fn test_devnet_333() {
+    let bytes = message_from_file("QRINFO_1_19458.dat".to_string());
+    let context = &mut (FFIContext { chain: ChainType::DevNet }) as *mut _ as *mut std::ffi::c_void;
+    let result = llmq_rotation_info_process2(
+        bytes.as_ptr(),
+        bytes.len(),
+        null_mut(),
+        [0u8; 32].as_ptr(),
+        false,
+        block_height_lookup_333,
+        masternode_list_lookup,
+        masternode_list_destroy,
+        add_insight_lookup,
+        should_process_llmq_of_type,
+        validate_llmq_callback,
+        context
+    );
+}

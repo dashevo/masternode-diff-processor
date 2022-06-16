@@ -23,7 +23,7 @@ use dash_spv_ffi::types::{LLMQSnapshot, MNListDiffResult};
 use dash_spv_models::common::llmq_type::LLMQType;
 use dash_spv_models::common::MerkleTree;
 use dash_spv_models::llmq;
-use dash_spv_models::masternode::masternode_list;
+use dash_spv_models::masternode::{LLMQEntry, masternode_list};
 use dash_spv_primitives::crypto::byte_util::{BytesDecodable, ConstDecodable, UInt256};
 use crate::processing::{classify_masternodes, classify_quorums};
 use crate::processing::manager::{ConsensusType, lookup_masternodes_and_quorums_for, Manager};
@@ -257,18 +257,18 @@ pub extern "C" fn llmq_rotation_info_read(
     } else {
         (null_mut(), null_mut())
     };
-    let last_quorum_hash_per_index_count = match dash_spv_primitives::consensus::encode::VarInt::from_bytes(message, offset) {
+    let last_quorum_per_index_count = match dash_spv_primitives::consensus::encode::VarInt::from_bytes(message, offset) {
         Some(data) => data.0 as usize,
         None => { return qr_failure(); }
     };
-    let mut last_quorum_hash_per_index_vec: Vec<*mut [u8; 32]> = Vec::with_capacity(last_quorum_hash_per_index_count);
-    for _i in 0..last_quorum_hash_per_index_count {
-        match UInt256::from_bytes(message, offset) {
-            Some(data) => last_quorum_hash_per_index_vec.push(boxed(data.0)),
+    let mut last_quorum_per_index_vec: Vec<*mut types::LLMQEntry> = Vec::with_capacity(last_quorum_per_index_count);
+    for _i in 0..last_quorum_per_index_count {
+        match LLMQEntry::from_bytes(message, offset) {
+            Some(data) => last_quorum_per_index_vec.push(boxed(data.encode())),
             None => { return qr_failure(); }
         };
     }
-    let last_quorum_hash_per_index = boxed_vec(last_quorum_hash_per_index_vec);
+    let last_quorum_per_index = boxed_vec(last_quorum_per_index_vec);
 
     let quorum_snapshot_list_count = match dash_spv_primitives::consensus::encode::VarInt::from_bytes(message, offset) {
         Some(data) => data.0 as usize,
@@ -309,8 +309,8 @@ pub extern "C" fn llmq_rotation_info_read(
         mn_list_diff_at_h_3c,
         mn_list_diff_at_h_4c,
         extra_share,
-        last_quorum_hash_per_index_count,
-        last_quorum_hash_per_index,
+        last_quorum_per_index_count,
+        last_quorum_per_index,
         quorum_snapshot_list_count,
         quorum_snapshot_list,
         mn_list_diff_list_count,
@@ -364,11 +364,11 @@ pub extern "C" fn llmq_rotation_info_process(
         null_mut()
     };
 
-    let last_quorum_hash_per_index_count = llmq_rotation_info.last_quorum_hash_per_index_count;
+    let last_quorum_per_index_count = llmq_rotation_info.last_quorum_per_index_count;
     let quorum_snapshot_list_count = llmq_rotation_info.quorum_snapshot_list_count;
     let mn_list_diff_list_count = llmq_rotation_info.mn_list_diff_list_count;
 
-    let last_quorum_hash_per_index = llmq_rotation_info.last_quorum_hash_per_index;
+    let last_quorum_per_index = llmq_rotation_info.last_quorum_per_index;
 
     let mn_list_diff_list = boxed_vec((0..mn_list_diff_list_count)
         .into_iter()
@@ -390,8 +390,8 @@ pub extern "C" fn llmq_rotation_info_process(
         snapshot_at_h_3c: llmq_rotation_info.snapshot_at_h_3c,
         snapshot_at_h_4c: llmq_rotation_info.snapshot_at_h_4c,
         extra_share,
-        last_quorum_hash_per_index_count,
-        last_quorum_hash_per_index,
+        last_quorum_per_index_count,
+        last_quorum_per_index,
         quorum_snapshot_list_count,
         quorum_snapshot_list: llmq_rotation_info.quorum_snapshot_list,
         mn_list_diff_list_count,
@@ -483,6 +483,21 @@ pub extern "C" fn llmq_rotation_info_process2(
         (null_mut(), None)
     };
 
+    let last_quorum_per_index_count = match dash_spv_primitives::consensus::encode::VarInt::from_bytes(message, offset) {
+        Some(data) => data.0 as usize,
+        None => { return qr_result_failure(); }
+    };
+    let mut last_quorum_per_index_vec: Vec<*mut types::LLMQEntry> = Vec::with_capacity(last_quorum_per_index_count);
+    for _i in 0..last_quorum_per_index_count {
+        match LLMQEntry::from_bytes(message, offset) {
+            Some(data) => last_quorum_per_index_vec.push(boxed(data.encode())),
+            None => { return qr_result_failure(); }
+        };
+    }
+    let last_quorum_per_index = boxed_vec(last_quorum_per_index_vec);
+
+
+    /*
     let last_quorum_hash_per_index_count = match dash_spv_primitives::consensus::encode::VarInt::from_bytes(message, offset) {
         Some(data) => data.0 as usize,
         None => { return qr_result_failure(); }
@@ -494,18 +509,8 @@ pub extern "C" fn llmq_rotation_info_process2(
             None => { return qr_result_failure(); }
         };
     }
-    let last_quorum_hash_per_index = boxed_vec(last_quorum_hash_per_index_vec);
+    let last_quorum_hash_per_index = boxed_vec(last_quorum_hash_per_index_vec);*/
 
-    let result_at_tip = boxed(list_diff_result(diff_tip, manager, desired_merkle_root));
-    let result_at_h = boxed(list_diff_result(diff_h, manager, desired_merkle_root));
-    let result_at_h_c = boxed(list_diff_result(diff_h_c, manager, desired_merkle_root));
-    let result_at_h_2c = boxed(list_diff_result(diff_h_2c, manager, desired_merkle_root));
-    let result_at_h_3c = boxed(list_diff_result(diff_h_3c, manager, desired_merkle_root));
-    let result_at_h_4c = if extra_share {
-        boxed(list_diff_result(diff_h_4c.unwrap(), manager, desired_merkle_root))
-    } else {
-        null_mut()
-    };
 
     let quorum_snapshot_list_count = match dash_spv_primitives::consensus::encode::VarInt::from_bytes(message, offset) {
         Some(data) => data.0 as usize,
@@ -537,6 +542,19 @@ pub extern "C" fn llmq_rotation_info_process2(
     }
     let mn_list_diff_list = boxed_vec(mn_list_diff_list_vec);
 
+
+    let result_at_tip = boxed(list_diff_result(diff_tip, manager, desired_merkle_root));
+    let result_at_h = boxed(list_diff_result(diff_h, manager, desired_merkle_root));
+    let result_at_h_c = boxed(list_diff_result(diff_h_c, manager, desired_merkle_root));
+    let result_at_h_2c = boxed(list_diff_result(diff_h_2c, manager, desired_merkle_root));
+    let result_at_h_3c = boxed(list_diff_result(diff_h_3c, manager, desired_merkle_root));
+    let result_at_h_4c = if extra_share {
+        boxed(list_diff_result(diff_h_4c.unwrap(), manager, desired_merkle_root))
+    } else {
+        null_mut()
+    };
+
+
     boxed(types::LLMQRotationInfoResult {
         result_at_tip,
         result_at_h,
@@ -549,8 +567,8 @@ pub extern "C" fn llmq_rotation_info_process2(
         snapshot_at_h_3c,
         snapshot_at_h_4c,
         extra_share,
-        last_quorum_hash_per_index,
-        last_quorum_hash_per_index_count,
+        last_quorum_per_index,
+        last_quorum_per_index_count,
         quorum_snapshot_list,
         quorum_snapshot_list_count,
         mn_list_diff_list,

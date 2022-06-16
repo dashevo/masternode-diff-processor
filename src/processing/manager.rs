@@ -1,5 +1,5 @@
 use std::cmp::min;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use dash_spv_ffi::ffi::boxer::{boxed, boxed_vec};
 use dash_spv_ffi::ffi::from::FromFFI;
 use dash_spv_ffi::types;
@@ -66,7 +66,7 @@ pub fn lookup_masternodes_and_quorums_for<MNL, MND>(
     block_hash: Option<UInt256>,
     masternode_list_lookup: MNL,
     masternode_list_destroy: MND,
-) -> (BTreeMap<UInt256, MasternodeEntry>, HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>)
+) -> (BTreeMap<UInt256, MasternodeEntry>, BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>)
     where
         MNL: Fn(UInt256) -> *const types::MasternodeList + Copy,
         MND: Fn(*const types::MasternodeList) + Copy,
@@ -76,7 +76,7 @@ pub fn lookup_masternodes_and_quorums_for<MNL, MND>(
             return (list.masternodes, list.quorums);
         }
     }
-    (BTreeMap::new(), HashMap::new())
+    (BTreeMap::new(), BTreeMap::new())
 }
 
 pub fn classify_masternodes(base_masternodes: BTreeMap<UInt256, MasternodeEntry>,
@@ -149,13 +149,13 @@ pub fn classify_quorums<'a,
     BHL: Fn(UInt256) -> u32 + Copy,
     VQL: Fn(LLMQValidationData) -> bool + Copy,
 >(
-    base_quorums: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>,
-    added_quorums: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>,
-    deleted_quorums: HashMap<LLMQType, Vec<UInt256>>,
+    base_quorums: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>,
+    added_quorums: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>,
+    deleted_quorums: BTreeMap<LLMQType, Vec<UInt256>>,
     manager: Manager<BHL, MNL, MND, AIL, SPL, VQL>,
 )
-    -> (HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>,
-        HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>,
+    -> (BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>,
+        BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>,
         bool,
         Vec<*mut [u8; 32]>
     ) {
@@ -194,7 +194,7 @@ pub fn classify_quorums<'a,
         .clone()
         .into_iter()
         .filter(|(key, _entries)| !quorums.contains_key(key))
-        .collect::<HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>>());
+        .collect::<BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>>());
     quorums.iter_mut().for_each(|(llmq_type, llmq_map)| {
         if let Some(keys_to_delete) = deleted_quorums.get(llmq_type) {
             keys_to_delete.into_iter().for_each(|key| {
@@ -213,7 +213,7 @@ pub fn classify_quorums<'a,
 
 
 #[cfg(test)]
-fn log_quorums_map(q: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>>, id: String) {
+fn log_quorums_map(q: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>>, id: String) {
     println!("{} hashes: [", id);
     let mut bmap: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>> = BTreeMap::new();
     for (qtype, map) in q.clone() {

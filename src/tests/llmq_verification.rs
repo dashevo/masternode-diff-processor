@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ptr::null_mut;
 use dash_spv_ffi::ffi::from::FromFFI;
 use dash_spv_ffi::ffi::to::ToFFI;
@@ -72,12 +72,12 @@ fn testnet_llmq_verification() { //testTestnetQuorumVerification
         let masternode_list_119200_decoded = unsafe { masternode_list_119200.decode() };
         let added_quorums = (0..result_119200.added_llmq_type_maps_count)
             .into_iter()
-            .fold(HashMap::new(), |mut acc, i| unsafe {
+            .fold(BTreeMap::new(), |mut acc, i| unsafe {
                 let map = *(*(result_119200.added_llmq_type_maps.offset(i as isize)));
                 let llmq_type = LLMQType::from(map.llmq_type);
                 let entry_map = (0..map.count)
                     .into_iter()
-                    .fold(HashMap::new(), |mut hacc, j| {
+                    .fold(BTreeMap::new(), |mut hacc, j| {
                         let raw_entry = *(*(map.values.offset(j as isize)));
                         let entry = raw_entry.decode();
                         hacc.insert(entry.llmq_hash, entry);
@@ -86,7 +86,7 @@ fn testnet_llmq_verification() { //testTestnetQuorumVerification
                 acc.insert(llmq_type, entry_map);
                 acc
             });
-        let hmm: HashMap<LLMQType, HashMap<UInt256, LLMQEntry>> = added_quorums.into_iter().filter(|(_, map)| map.contains_key(&block_hash_119064)).collect();
+        let hmm: BTreeMap<LLMQType, BTreeMap<UInt256, LLMQEntry>> = added_quorums.into_iter().filter(|(_, map)| map.contains_key(&block_hash_119064)).collect();
         assert!(hmm.len() > 0, "There should be a quorum using 119064");
         // assert!(added_quorums.contains_key(&block_hash_119064), "There should be a quorum using 119064");
         // TODO: verify with QuorumValidationData (need implement BLS before)
