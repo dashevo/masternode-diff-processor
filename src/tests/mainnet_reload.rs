@@ -1,7 +1,7 @@
-use hashes::hex::ToHex;
-use crate::common::chain_type::ChainType;
+use dash_spv_models::common::chain_type::ChainType;
+use dash_spv_primitives::crypto::byte_util::{Reversable, UInt256};
+use dash_spv_primitives::hashes::hex::ToHex;
 use crate::lib_tests::tests::{block_height_for, load_masternode_lists_for_files};
-use crate::{Reversable, UInt256};
 
 #[test]
 fn test_mainnet_reload() {

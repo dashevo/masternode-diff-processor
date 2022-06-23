@@ -1,36 +1,35 @@
 [package]
 name = "dash_mndiff"
-version = "0.1.1"
+version = "0.2.1"
 edition = "2018"
 build = "build.rs"
 publish = false
 
-# Please don't forget to add relevant features to docs.rs below
-[features]
-default = [ "std", "secp-recovery" ]
-unstable = []
-rand = ["secp256k1/rand-std"]
-secp-lowmemory = ["secp256k1/lowmemory"]
-secp-recovery = ["secp256k1/recovery"]
-
-# At least one of std, no-std must be enabled.
-#
-# The no-std feature doesn't disable std - you need to turn off the std feature for that by disabling default.
-# Instead no-std enables additional features required for this crate to be usable without std.
-# As a result, both can be enabled without conflict.
-std = ["secp256k1/std", "bitcoin_hashes/std"]
-#std = ["secp256k1/std", "bitcoin_hashes/std", "bech32/std"]
-#no-std = ["hashbrown", "core2/alloc", "bitcoin_hashes/alloc"]
-
 [dependencies]
 byte = "0.2"
-bitcoin_hashes = { version = "0.10.0", default-features = false }
-bitcoinconsensus = { version = "0.19.0-3", optional = true }
-secp256k1 = { version = "0.20.2", default-features = false }
-core2 = { version = "0.3.0", optional = true, default-features = false }
 
-[dev-dependencies]
-secp256k1 = { version = "0.20.2", features = [ "recovery", "rand-std" ] }
+#[dependencies.dash-spv-primitives]
+#path = "../dash-spv-primitives"
+#[dependencies.dash-spv-models]
+#path = "../dash-spv-models"
+#[dependencies.dash-spv-ffi]
+#path = "../dash-spv-ffi"
+#[dependencies.dash-spv-storage]
+#path = "../dash-spv-storage"
+
+[dependencies.dash-spv-primitives]
+git = "https://github.com/pankcuf/dash-spv-primitives"
+branch = "master"
+version = "0.1.12"
+[dependencies.dash-spv-models]
+git = "https://github.com/pankcuf/dash-spv-models"
+branch = "core-v0.18"
+version = "0.1.11"
+[dependencies.dash-spv-ffi]
+git = "https://github.com/pankcuf/dash-spv-ffi"
+branch = "master"
+version = "0.1.12"
+
 
 [build-dependencies]
 cbindgen = "0.20.0"

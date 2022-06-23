@@ -1,5 +1,6 @@
-use bitcoin_hashes::hex::{FromHex, ToHex};
-use crate::{MerkleTree, UInt256};
+use dash_spv_models::common::merkle_tree::MerkleTree;
+use dash_spv_primitives::crypto::byte_util::UInt256;
+use dash_spv_primitives::hashes::hex::{FromHex, ToHex};
 
 #[test]
 fn test_multiple_merkle_hashes() {

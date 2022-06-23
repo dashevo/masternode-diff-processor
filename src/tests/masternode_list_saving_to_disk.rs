@@ -1,8 +1,10 @@
 use std::ptr::null_mut;
-use bitcoin_hashes::hex::FromHex;
-use crate::common::chain_type::ChainType;
-use crate::lib_tests::tests::{add_insight_lookup, assert_diff_result, FFIContext, masternode_list_destroy, message_from_file, should_process_llmq_of_type, validate_llmq_callback};
-use crate::{FromFFI, mnl_diff_process, UInt256};
+use dash_spv_ffi::ffi::from::FromFFI;
+use dash_spv_models::common::chain_type::ChainType;
+use dash_spv_primitives::crypto::byte_util::UInt256;
+use dash_spv_primitives::hashes::hex::FromHex;
+use crate::lib_tests::tests::{add_insight_lookup, assert_diff_result, FFIContext, get_llmq_snapshot_by_block_height, masternode_list_destroy, message_from_file, should_process_llmq_of_type, validate_llmq_callback};
+use crate::mnl_diff_process;
 
 #[test]
 fn test_mnl_saving_to_disk() { // testMNLSavingToDisk
@@ -16,6 +18,8 @@ fn test_mnl_saving_to_disk() { // testMNLSavingToDisk
         [0u8; 32].as_ptr(),
         false,
         |block_hash| 122088,
+        |height| null_mut(),
+        get_llmq_snapshot_by_block_height,
         |block_hash| null_mut(),
         masternode_list_destroy,
         add_insight_lookup,

@@ -5,15 +5,16 @@ pub mod tests {
     use std::collections::HashMap;
     use std::io::Read;
     use std::ptr::null_mut;
-    use bitcoin_hashes::hex::FromHex;
     use byte::BytesExt;
-    use ffi::from::FromFFI;
-    use ffi::to::ToFFI;
-    use ffi::unboxer::unbox_any;
-    use crate::common::chain_type::ChainType;
-    use crate::{ffi, LLMQType, Reversable, UInt256};
-    use crate::crypto::byte_util::{BytesDecodable, UInt384, UInt768};
-    use crate::masternode;
+    use dash_spv_ffi::ffi::from::FromFFI;
+    use dash_spv_ffi::ffi::to::ToFFI;
+    use dash_spv_ffi::ffi::unboxer::unbox_any;
+    use dash_spv_ffi::types;
+    use dash_spv_models::common::chain_type::ChainType;
+    use dash_spv_models::masternode;
+    use dash_spv_primitives::crypto::byte_util::{BytesDecodable, Reversable, UInt256, UInt384, UInt768};
+    use dash_spv_primitives::hashes::hex::FromHex;
+    use crate::LLMQType;
     use crate::mnl_diff_process;
 
     #[derive(Debug)]
@@ -196,7 +197,7 @@ pub mod tests {
         file
     }
 
-    pub fn assert_diff_result(chain: ChainType, result: ffi::types::MNListDiffResult) {
+    pub fn assert_diff_result(chain: ChainType, result: types::MNListDiffResult) {
         let mut masternode_list = unsafe { (*result.masternode_list).decode() };
         let bh = block_height_for(chain, masternode_list.block_hash.reversed().to_string().as_str());
 
@@ -211,11 +212,18 @@ pub mod tests {
     pub unsafe extern "C" fn block_height_lookup_5078(_block_hash: *mut [u8; 32], _context: *const std::ffi::c_void) -> u32 {
         5078
     }
-
-    pub unsafe extern "C" fn masternode_list_lookup(_block_hash: *mut [u8; 32], _context: *const std::ffi::c_void) -> *const ffi::types::MasternodeList {
+    pub unsafe extern "C" fn get_block_hash_by_height_5078(_block_height: u32, _context: *const std::ffi::c_void) -> *const u8 {
         null_mut()
     }
-    pub unsafe extern "C" fn masternode_list_destroy(_masternode_list: *const ffi::types::MasternodeList) {
+
+    pub unsafe extern "C" fn get_llmq_snapshot_by_block_height(_block_height: u32, _context: *const std::ffi::c_void) -> *const types::LLMQSnapshot {
+        null_mut()
+    }
+
+    pub unsafe extern "C" fn masternode_list_lookup(_block_hash: *mut [u8; 32], _context: *const std::ffi::c_void) -> *const types::MasternodeList {
+        null_mut()
+    }
+    pub unsafe extern "C" fn masternode_list_destroy(_masternode_list: *const types::MasternodeList) {
 
     }
     pub unsafe extern "C" fn add_insight_lookup(_hash: *mut [u8; 32], _context: *const std::ffi::c_void) {
@@ -226,12 +234,12 @@ pub mod tests {
         llmq_type == match data.chain {
             ChainType::MainNet => LLMQType::Llmqtype400_60.into(),
             ChainType::TestNet => LLMQType::Llmqtype50_60.into(),
-            ChainType::DevNet => LLMQType::Llmqtype10_60.into()
+            ChainType::DevNet => LLMQType::Llmqtype60_75.into()
         }
     }
-    pub unsafe extern "C" fn validate_llmq_callback(data: *mut ffi::types::LLMQValidationData, _context: *const std::ffi::c_void) -> bool {
+    pub unsafe extern "C" fn validate_llmq_callback(data: *mut types::LLMQValidationData, _context: *const std::ffi::c_void) -> bool {
         let result = unbox_any(data);
-        let ffi::types::LLMQValidationData { items, count, commitment_hash, all_commitment_aggregated_signature, threshold_signature, public_key } = *result;
+        let types::LLMQValidationData { items, count, commitment_hash, all_commitment_aggregated_signature, threshold_signature, public_key } = *result;
         println!("validate_quorum_callback: {:?}, {}, {:?}, {:?}, {:?}, {:?}", items, count, commitment_hash, all_commitment_aggregated_signature, threshold_signature, public_key);
 
         // bool allCommitmentAggregatedSignatureValidated = [DSBLSKey verifySecureAggregated:commitmentHash signature:allCommitmentAggregatedSignature withPublicKeys:publicKeyArray];
@@ -287,6 +295,8 @@ pub mod tests {
             merkle_root,
             use_insight_as_backup,
             |block_hash| 122088,
+            |height| null_mut(),
+            get_llmq_snapshot_by_block_height,
             |block_hash| null_mut(),
             masternode_list_destroy,
             add_insight_lookup,
@@ -332,8 +342,10 @@ pub mod tests {
     }
 
     pub fn load_masternode_lists_for_files
-    <'a, BHL: Fn(UInt256) -> u32 + Copy>(files: Vec<String>, chain: ChainType, block_height_lookup: BHL)
-                                         -> (bool, HashMap<UInt256, masternode::MasternodeList<'a>>) {
+    <'a, BlockHeightByHash: Fn(UInt256) -> u32 + Copy>(
+        files: Vec<String>, chain: ChainType,
+        get_block_height_by_hash: BlockHeightByHash)
+        -> (bool, HashMap<UInt256, masternode::MasternodeList>) {
         let mut lists: HashMap<UInt256, masternode::MasternodeList> = HashMap::new();
         let mut base_masternode_list_hash: Option<UInt256> = None;
         for file in files {
@@ -345,11 +357,13 @@ pub mod tests {
                 match base_masternode_list_hash { Some(data) => data.0.as_ptr(), None => null_mut() },
                 [0u8; 32].as_ptr(),
                 false,
-                block_height_lookup,
+                get_block_height_by_hash,
+                |height| null_mut(),
+                get_llmq_snapshot_by_block_height,
                 |hash| match lists.get(&hash) {
                     Some(list) => {
                         let list_encoded = list.clone().encode();
-                        &list_encoded as *const ffi::types::MasternodeList
+                        &list_encoded as *const types::MasternodeList
                     },
                     None => null_mut()
                 },

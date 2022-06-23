@@ -1,4 +1,4 @@
-use crate::common::chain_type::ChainType;
+use dash_spv_models::common::chain_type::ChainType;
 use crate::lib_tests::tests::perform_mnlist_diff_test_for_message;
 
 #[test]
